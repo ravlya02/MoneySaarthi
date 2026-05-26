@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Onboarding — {{ step }}{% endblock %}
+{% block content %}
+  <h1>Step: {{ step }}</h1>
+  <!-- Placeholder. Each step POSTs partial state and advances through {{ steps }}. -->
+  <form method="post" action="/onboarding/{{ step }}"></form>
+{% endblock %}

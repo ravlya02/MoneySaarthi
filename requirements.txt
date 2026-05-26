@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+pydantic>=2
+pydantic-settings
+supabase
+httpx
+google-generativeai
+qdrant-client
+plotly
+python-jose[cryptography]

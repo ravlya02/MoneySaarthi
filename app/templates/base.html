@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}MoneySaarthi{% endblock %}</title>
+  <!-- Load Plotly once for the whole app (§D.1). Use plotly-basic if only pie/bar/line. -->
+  <script src="https://cdn.plot.ly/plotly-2.x.min.js"></script>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <main>{% block content %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

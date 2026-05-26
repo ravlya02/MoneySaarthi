@@ -1,0 +1,4 @@
+:root { font-family: system-ui, sans-serif; }
+body { margin: 0; padding: 1.5rem; max-width: 960px; margin-inline: auto; }
+section { margin-block: 2rem; }
+.disclaimer { font-size: .85rem; color: #555; border-top: 1px solid #ddd; padding-top: 1rem; }
