@@ -16,10 +16,10 @@ async def dashboard(request: Request, user: CurrentUser = Depends(current_user))
     db = anon_client()
     report = db.table("tax_reports").select("*").eq("user_id", user.id).order("generated_at", desc=True).limit(1).execute()
     if not report.data:
-        return templates.TemplateResponse("dashboard_pending.html", {"request": request})
+        return templates.TemplateResponse(request=request, name="dashboard_pending.html")
 
     # TODO: build alloc_fig / tax_fig via app.charts.figures and pass to template.
-    return templates.TemplateResponse("dashboard.html", {"request": request, "report": report.data[0]})
+    return templates.TemplateResponse(request=request, name="dashboard.html", context={"report": report.data[0]})
 
 
 @router.get("/jobs/{job_id}/status")

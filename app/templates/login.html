@@ -1,7 +1,184 @@
 {% extends "base.html" %}
 {% block title %}Sign in — MoneySaarthi{% endblock %}
+
 {% block content %}
-  <h1>Sign in</h1>
-  <!-- Supabase Auth handled client-side; resulting JWT sent to the backend. -->
-  <div id="auth"></div>
+<div class="login-wrap">
+
+  <!-- Left: brand panel -->
+  <div class="login-brand">
+    <svg class="brand-logo" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M40 8 C28 8 18 20 20 34 C22 46 32 52 40 72 C48 52 58 46 60 34 C62 20 52 8 40 8Z" fill="#1a56db" opacity="0.9"/>
+      <path d="M28 30 C24 22 30 14 40 14 C38 22 34 28 28 30Z" fill="#fff" opacity="0.7"/>
+      <path d="M52 30 C56 22 50 14 40 14 C42 22 46 28 52 30Z" fill="#fff" opacity="0.5"/>
+      <path d="M40 14 C40 24 40 36 40 48" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+    </svg>
+    <h1 class="brand-name">MoneySaarthi</h1>
+    <p class="brand-tagline">Your AI-powered finance advisor</p>
+  </div>
+
+  <!-- Right: form panel -->
+  <div class="login-form-panel">
+    <div class="login-card">
+      <p id="auth-error" class="auth-error" hidden></p>
+
+      <form id="auth-form" novalidate>
+        <div class="field-group">
+          <label for="email">Your email</label>
+          <input type="email" id="email" placeholder="Enter your email" autocomplete="email" required>
+        </div>
+
+        <div class="field-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required>
+        </div>
+
+        <div class="form-links">
+          <a href="#" id="forgot-link" class="form-link">Recover password</a>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-primary">
+          <span id="btn-label">SIGN IN</span>
+          <span id="btn-spinner" hidden>...</span>
+        </button>
+
+        <button type="button" id="google-btn" class="btn-google">
+          <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+            <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 6.294C4.672 4.169 6.656 3.58 9 3.58z"/>
+          </svg>
+          Continue with Google
+        </button>
+
+        <p class="toggle-line">
+          <span id="toggle-text">Don't have an account?</span>
+          <a href="#" id="toggle-link" class="form-link">Sign Up</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  const _sb = supabase.createClient("{{ supabase_url }}", "{{ supabase_anon_key }}");
+  let mode = "signin";
+
+  const form      = document.getElementById("auth-form");
+  const emailEl   = document.getElementById("email");
+  const passEl    = document.getElementById("password");
+  const errorEl   = document.getElementById("auth-error");
+  const submitBtn = document.getElementById("submit-btn");
+  const btnLabel  = document.getElementById("btn-label");
+  const btnSpinner= document.getElementById("btn-spinner");
+  const toggleLink= document.getElementById("toggle-link");
+  const toggleText= document.getElementById("toggle-text");
+  const googleBtn = document.getElementById("google-btn");
+  const forgotLink= document.getElementById("forgot-link");
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.hidden = false;
+  }
+  function clearError() { errorEl.hidden = true; }
+  function setLoading(on) {
+    submitBtn.disabled = on;
+    btnLabel.hidden = on;
+    btnSpinner.hidden = !on;
+  }
+
+  toggleLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    clearError();
+    if (mode === "signin") {
+      mode = "signup";
+      btnLabel.textContent = "SIGN UP";
+      toggleText.textContent = "Already have an account?";
+      toggleLink.textContent = "Sign In";
+      forgotLink.style.visibility = "hidden";
+    } else {
+      mode = "signin";
+      btnLabel.textContent = "SIGN IN";
+      toggleText.textContent = "Don't have an account?";
+      toggleLink.textContent = "Sign Up";
+      forgotLink.style.visibility = "visible";
+    }
+  });
+
+  forgotLink.addEventListener("click", async (e) => {
+    e.preventDefault();
+    const email = emailEl.value.trim();
+    if (!email) { showError("Enter your email address first."); return; }
+    clearError();
+    const { error } = await _sb.auth.resetPasswordForEmail(email);
+    if (error) { showError(error.message); }
+    else { showError("Password reset email sent — check your inbox."); }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError();
+    const email = emailEl.value.trim();
+    const password = passEl.value;
+    if (!email || !password) { showError("Email and password are required."); return; }
+
+    setLoading(true);
+    let result;
+    if (mode === "signin") {
+      result = await _sb.auth.signInWithPassword({ email, password });
+    } else {
+      result = await _sb.auth.signUp({ email, password });
+    }
+    setLoading(false);
+
+    const { data, error } = result;
+    if (error) { showError(error.message); return; }
+
+    // For sign-up, Supabase may require email confirmation.
+    if (mode === "signup" && !data.session) {
+      showError("Account created — check your email to confirm before signing in.");
+      return;
+    }
+
+    const session = data.session;
+    await fetch("/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      }),
+    });
+    window.location.href = "/dashboard";
+  });
+
+  googleBtn.addEventListener("click", async () => {
+    clearError();
+    const { error } = await _sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin + "/login" },
+    });
+    if (error) showError(error.message);
+  });
+
+  // After Google OAuth redirect, Supabase sets the session in the URL hash.
+  // Exchange it for a server cookie.
+  _sb.auth.onAuthStateChange(async (event, session) => {
+    if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session) {
+      await fetch("/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+        }),
+      });
+      window.location.href = "/dashboard";
+    }
+  });
+</script>
 {% endblock %}

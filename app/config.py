@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     web_search_provider: str = "tavily"
 
     assessment_year: str = "AY 2026-27"
+    debug: bool = False
 
 
 @lru_cache
