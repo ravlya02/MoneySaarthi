@@ -4,11 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}MoneySaarthi{% endblock %}</title>
-  <!-- Load Plotly once for the whole app (§D.1). Use plotly-basic if only pie/bar/line. -->
+  <!-- Plotly loaded once for the whole app (§D.1). -->
   <script src="https://cdn.plot.ly/plotly-2.x.min.js"></script>
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+  {% if authenticated %}
+  <nav class="site-nav">
+    <a href="/" class="nav-brand">MoneySaarthi</a>
+    <form method="post" action="/auth/logout" class="nav-logout">
+      <button type="submit" class="btn-nav-logout">Sign out</button>
+    </form>
+  </nav>
+  {% endif %}
   <main>{% block content %}{% endblock %}</main>
   {% block scripts %}{% endblock %}
 </body>

@@ -18,7 +18,7 @@ STEPS = ["demographics", "income", "expenses", "loans", "investments", "insuranc
 
 @router.get("/{step}", response_class=HTMLResponse)
 async def step_page(step: str, request: Request, user: CurrentUser = Depends(current_user)):
-    return templates.TemplateResponse(f"onboarding/{step}.html", {"request": request, "step": step, "steps": STEPS})
+    return templates.TemplateResponse(request=request, name=f"onboarding/{step}.html", context={"step": step, "steps": STEPS})
 
 
 @router.post("/submit")
