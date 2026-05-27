@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}MoneySaarthi — Savings &amp; Investments{% endblock %}
+{% block content %}
+<div class="onboarding-wrap">
+
+  <nav class="onboarding-progress" aria-label="Form progress">
+    <span class="progress-label">Step {{ step_index }} of {{ total_steps }}</span>
+    <div class="progress-track">
+      <div class="progress-fill" style="width: {{ (step_index / total_steps * 100)|int }}%;"></div>
+    </div>
+    <ol class="step-list">
+      {% for s in steps %}
+      <li class="step-item {% if s == step %}active{% elif loop.index < step_index %}done{% endif %}">
+        <a href="/onboarding/{{ s }}" class="step-link">{{ s|capitalize }}</a>
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  {% if errors %}
+  <div class="form-error-banner" role="alert">
+    <strong>Please fix the following:</strong>
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/onboarding/{{ step }}" class="step-form">
+    <h2>Savings &amp; Investments</h2>
+    <p class="step-hint">Include mutual funds, shares, NPS, PF, PPF, FD, RD, Sukanya, gold, property, and any other holdings.</p>
+
+    <div id="rows-container">
+      {% set holdings = draft.get('investments', {}).get('holdings', []) %}
+      {% for h in holdings %}
+      {% set i = loop.index0 %}
+      <fieldset class="repeating-row">
+        <legend>Holding {{ i + 1 }}</legend>
+
+        <div class="field-group">
+          <label>Asset Class</label>
+          <select name="holdings[{{ i }}][asset_class]" required>
+            <option value="">Select…</option>
+            {% for opt in ['Equity','Debt','RealEstate','Metals','Cash'] %}
+            <option value="{{ opt }}" {% if h.get('asset_class') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Instrument / Fund Name</label>
+          <input type="text" name="holdings[{{ i }}][instrument]"
+                 value="{{ h.get('instrument', '') }}"
+                 placeholder="e.g. Axis Small Cap Fund" required>
+        </div>
+
+        <div class="field-group">
+          <label>Owner</label>
+          <select name="holdings[{{ i }}][owner]">
+            <option value="">Select…</option>
+            {% for opt in ['Sir','Mam'] %}
+            <option value="{{ opt }}" {% if h.get('owner') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Monthly SIP (₹)</label>
+          <input type="number" name="holdings[{{ i }}][sip_monthly]"
+                 value="{{ h.get('sip_monthly', '') }}" min="0" step="1"
+                 placeholder="0">
+        </div>
+
+        <div class="field-group">
+          <label>Invested Amount (₹)</label>
+          <input type="number" name="holdings[{{ i }}][invested_amount]"
+                 value="{{ h.get('invested_amount', '') }}" min="0" step="1"
+                 placeholder="e.g. 500000">
+        </div>
+
+        <div class="field-group">
+          <label>Current Value (₹)</label>
+          <input type="number" name="holdings[{{ i }}][current_corpus]"
+                 value="{{ h.get('current_corpus', '') }}" min="0" step="1"
+                 placeholder="e.g. 720000">
+        </div>
+
+        <div class="field-group">
+          <label>Interest / Return Rate (%)</label>
+          <input type="number" name="holdings[{{ i }}][interest_rate]"
+                 value="{{ h.get('interest_rate', '') }}" min="0" max="30" step="0.01"
+                 placeholder="e.g. 7.1 for PPF">
+        </div>
+
+        <button type="button" class="remove-row-btn">Remove</button>
+      </fieldset>
+      {% endfor %}
+    </div>
+
+    <template id="row-tpl">
+      <fieldset class="repeating-row">
+        <legend>Holding __num__</legend>
+        <div class="field-group">
+          <label>Asset Class</label>
+          <select name="holdings[__idx__][asset_class]" required>
+            <option value="">Select…</option>
+            <option value="Equity">Equity</option>
+            <option value="Debt">Debt</option>
+            <option value="RealEstate">RealEstate</option>
+            <option value="Metals">Metals</option>
+            <option value="Cash">Cash</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Instrument / Fund Name</label>
+          <input type="text" name="holdings[__idx__][instrument]" placeholder="e.g. Axis Small Cap Fund" required>
+        </div>
+        <div class="field-group">
+          <label>Owner</label>
+          <select name="holdings[__idx__][owner]">
+            <option value="">Select…</option>
+            <option value="Sir">Sir</option>
+            <option value="Mam">Mam</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Monthly SIP (₹)</label>
+          <input type="number" name="holdings[__idx__][sip_monthly]" min="0" step="1" placeholder="0">
+        </div>
+        <div class="field-group">
+          <label>Invested Amount (₹)</label>
+          <input type="number" name="holdings[__idx__][invested_amount]" min="0" step="1" placeholder="e.g. 500000">
+        </div>
+        <div class="field-group">
+          <label>Current Value (₹)</label>
+          <input type="number" name="holdings[__idx__][current_corpus]" min="0" step="1" placeholder="e.g. 720000">
+        </div>
+        <div class="field-group">
+          <label>Interest / Return Rate (%)</label>
+          <input type="number" name="holdings[__idx__][interest_rate]" min="0" max="30" step="0.01" placeholder="e.g. 7.1">
+        </div>
+        <button type="button" class="remove-row-btn">Remove</button>
+      </fieldset>
+    </template>
+
+    <button type="button" id="add-row-btn" class="add-row-btn">+ Add holding</button>
+
+    <div class="form-actions">
+      {% if prev_step %}<a href="/onboarding/{{ prev_step }}" class="btn-secondary">Back</a>{% endif %}
+      <button type="submit" class="btn-primary">Save &amp; Continue</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const container = document.getElementById('rows-container');
+  const tpl = document.getElementById('row-tpl');
+  let count = container.querySelectorAll('.repeating-row').length;
+  function wireRemove(row) {
+    row.querySelector('.remove-row-btn').addEventListener('click', () => row.remove());
+  }
+  container.querySelectorAll('.repeating-row').forEach(wireRemove);
+  document.getElementById('add-row-btn').addEventListener('click', () => {
+    const frag = tpl.content.cloneNode(true);
+    const row = frag.querySelector('fieldset');
+    row.querySelector('legend').textContent = 'Holding ' + (count + 1);
+    row.querySelectorAll('[name]').forEach(el => { el.name = el.name.replace(/__idx__/g, count); });
+    wireRemove(row);
+    container.appendChild(row);
+    count++;
+  });
+})();
+</script>
+{% endblock %}

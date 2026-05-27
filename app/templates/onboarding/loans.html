@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}MoneySaarthi — Loans{% endblock %}
+{% block content %}
+<div class="onboarding-wrap">
+
+  <nav class="onboarding-progress" aria-label="Form progress">
+    <span class="progress-label">Step {{ step_index }} of {{ total_steps }}</span>
+    <div class="progress-track">
+      <div class="progress-fill" style="width: {{ (step_index / total_steps * 100)|int }}%;"></div>
+    </div>
+    <ol class="step-list">
+      {% for s in steps %}
+      <li class="step-item {% if s == step %}active{% elif loop.index < step_index %}done{% endif %}">
+        <a href="/onboarding/{{ s }}" class="step-link">{{ s|capitalize }}</a>
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  {% if errors %}
+  <div class="form-error-banner" role="alert">
+    <strong>Please fix the following:</strong>
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/onboarding/{{ step }}" class="step-form">
+    <h2>Loans &amp; Liabilities</h2>
+    <p class="step-hint">Include home loans, personal loans, car loans, and any other EMIs. Leave blank if you have no loans.</p>
+
+    <div id="rows-container">
+      {% set loans = draft.get('loans', {}).get('liabilities', []) %}
+      {% for loan in loans %}
+      {% set i = loop.index0 %}
+      <fieldset class="repeating-row">
+        <legend>Loan {{ i + 1 }}</legend>
+
+        <div class="field-group">
+          <label>Loan Type</label>
+          <input type="text" name="liabilities[{{ i }}][loan_type]"
+                 value="{{ loan.get('loan_type', '') }}"
+                 placeholder="e.g. Home Loan" required>
+        </div>
+
+        <div class="field-group">
+          <label>Owner</label>
+          <select name="liabilities[{{ i }}][owner]">
+            <option value="">Select…</option>
+            {% for opt in ['Sir','Mam','Joint'] %}
+            <option value="{{ opt }}" {% if loan.get('owner') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Monthly EMI (₹)</label>
+          <input type="number" name="liabilities[{{ i }}][emi]"
+                 value="{{ loan.get('emi', '') }}" min="0" step="1"
+                 placeholder="e.g. 35000">
+        </div>
+
+        <div class="field-group">
+          <label>Pending Amount (₹)</label>
+          <input type="number" name="liabilities[{{ i }}][pending_amount]"
+                 value="{{ loan.get('pending_amount', '') }}" min="0" step="1"
+                 placeholder="e.g. 3500000">
+        </div>
+
+        <div class="field-group">
+          <label>Interest Rate (%)</label>
+          <input type="number" name="liabilities[{{ i }}][interest_rate]"
+                 value="{{ loan.get('interest_rate', '') }}" min="0" max="30" step="0.01"
+                 placeholder="e.g. 8.50">
+        </div>
+
+        <div class="field-group">
+          <label>Remaining Duration (months)</label>
+          <input type="number" name="liabilities[{{ i }}][duration_months]"
+                 value="{{ loan.get('duration_months', '') }}" min="0" step="1"
+                 placeholder="e.g. 180">
+        </div>
+
+        <button type="button" class="remove-row-btn">Remove</button>
+      </fieldset>
+      {% endfor %}
+    </div>
+
+    <template id="row-tpl">
+      <fieldset class="repeating-row">
+        <legend>Loan __num__</legend>
+        <div class="field-group">
+          <label>Loan Type</label>
+          <input type="text" name="liabilities[__idx__][loan_type]" placeholder="e.g. Home Loan" required>
+        </div>
+        <div class="field-group">
+          <label>Owner</label>
+          <select name="liabilities[__idx__][owner]">
+            <option value="">Select…</option>
+            <option value="Sir">Sir</option>
+            <option value="Mam">Mam</option>
+            <option value="Joint">Joint</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Monthly EMI (₹)</label>
+          <input type="number" name="liabilities[__idx__][emi]" min="0" step="1" placeholder="e.g. 35000">
+        </div>
+        <div class="field-group">
+          <label>Pending Amount (₹)</label>
+          <input type="number" name="liabilities[__idx__][pending_amount]" min="0" step="1" placeholder="e.g. 3500000">
+        </div>
+        <div class="field-group">
+          <label>Interest Rate (%)</label>
+          <input type="number" name="liabilities[__idx__][interest_rate]" min="0" max="30" step="0.01" placeholder="e.g. 8.50">
+        </div>
+        <div class="field-group">
+          <label>Remaining Duration (months)</label>
+          <input type="number" name="liabilities[__idx__][duration_months]" min="0" step="1" placeholder="e.g. 180">
+        </div>
+        <button type="button" class="remove-row-btn">Remove</button>
+      </fieldset>
+    </template>
+
+    <button type="button" id="add-row-btn" class="add-row-btn">+ Add loan</button>
+
+    <div class="form-actions">
+      {% if prev_step %}<a href="/onboarding/{{ prev_step }}" class="btn-secondary">Back</a>{% endif %}
+      <button type="submit" class="btn-primary">Save &amp; Continue</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const container = document.getElementById('rows-container');
+  const tpl = document.getElementById('row-tpl');
+  let count = container.querySelectorAll('.repeating-row').length;
+  function wireRemove(row) {
+    row.querySelector('.remove-row-btn').addEventListener('click', () => row.remove());
+  }
+  container.querySelectorAll('.repeating-row').forEach(wireRemove);
+  document.getElementById('add-row-btn').addEventListener('click', () => {
+    const frag = tpl.content.cloneNode(true);
+    const row = frag.querySelector('fieldset');
+    row.querySelector('legend').textContent = 'Loan ' + (count + 1);
+    row.querySelectorAll('[name]').forEach(el => { el.name = el.name.replace(/__idx__/g, count); });
+    wireRemove(row);
+    container.appendChild(row);
+    count++;
+  });
+})();
+</script>
+{% endblock %}

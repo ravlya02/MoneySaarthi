@@ -1,7 +1,162 @@
 {% extends "base.html" %}
-{% block title %}Onboarding — {{ step }}{% endblock %}
+{% block title %}MoneySaarthi — Demographics{% endblock %}
 {% block content %}
-  <h1>Step: {{ step }}</h1>
-  <!-- Placeholder. Each step POSTs partial state and advances through {{ steps }}. -->
-  <form method="post" action="/onboarding/{{ step }}"></form>
+<div class="onboarding-wrap">
+
+  {# ── Progress bar ── #}
+  <nav class="onboarding-progress" aria-label="Form progress">
+    <span class="progress-label">Step {{ step_index }} of {{ total_steps }}</span>
+    <div class="progress-track">
+      <div class="progress-fill" style="width: {{ (step_index / total_steps * 100)|int }}%;"></div>
+    </div>
+    <ol class="step-list">
+      {% for s in steps %}
+      <li class="step-item {% if s == step %}active{% elif loop.index < step_index %}done{% endif %}">
+        <a href="/onboarding/{{ s }}" class="step-link">{{ s|capitalize }}</a>
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  {# ── Error / warning banners ── #}
+  {% if errors %}
+  <div class="form-error-banner" role="alert">
+    <strong>Please fix the following:</strong>
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/onboarding/{{ step }}" class="step-form">
+    <h2>Household Members</h2>
+    <p class="step-hint">Add all members of your household — Sir, Mam, children, and dependent parents.</p>
+
+    <div id="rows-container">
+      {% set members = draft.get('demographics', {}).get('members', []) %}
+      {% for member in members %}
+      {% set i = loop.index0 %}
+      <fieldset class="repeating-row">
+        <legend>Member {{ i + 1 }}</legend>
+
+        <div class="field-group">
+          <label for="role_{{ i }}">Role</label>
+          <select id="role_{{ i }}" name="members[{{ i }}][member_role]" required>
+            <option value="">Select…</option>
+            {% for opt in ['Sir','Mam','Child','Parent','Other'] %}
+            <option value="{{ opt }}" {% if member.get('member_role') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="name_{{ i }}">Name</label>
+          <input id="name_{{ i }}" type="text" name="members[{{ i }}][display_name]"
+                 value="{{ member.get('display_name', '') }}" placeholder="e.g. Rahul">
+        </div>
+
+        <div class="field-group">
+          <label for="age_{{ i }}">Age</label>
+          <input id="age_{{ i }}" type="number" name="members[{{ i }}][age]"
+                 value="{{ member.get('age', '') }}" min="0" max="120" step="0.5"
+                 placeholder="e.g. 35">
+        </div>
+
+        <div class="field-group">
+          <label for="class_{{ i }}">Class / Grade (if student)</label>
+          <input id="class_{{ i }}" type="text" name="members[{{ i }}][studies_in_class]"
+                 value="{{ member.get('studies_in_class', '') }}" placeholder="e.g. Grade 8">
+        </div>
+
+        <div class="field-group field-group--checkbox">
+          <label>
+            <input type="checkbox" name="members[{{ i }}][financially_dependent]"
+                   value="true"
+                   {% if member.get('financially_dependent') %}checked{% endif %}>
+            Financially dependent on earner(s)
+          </label>
+        </div>
+
+        <button type="button" class="remove-row-btn" aria-label="Remove member">Remove</button>
+      </fieldset>
+      {% endfor %}
+    </div>
+
+    <template id="row-tpl">
+      <fieldset class="repeating-row">
+        <legend>Member __num__</legend>
+
+        <div class="field-group">
+          <label>Role</label>
+          <select name="members[__idx__][member_role]" required>
+            <option value="">Select…</option>
+            <option value="Sir">Sir</option>
+            <option value="Mam">Mam</option>
+            <option value="Child">Child</option>
+            <option value="Parent">Parent</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Name</label>
+          <input type="text" name="members[__idx__][display_name]" placeholder="e.g. Rahul">
+        </div>
+
+        <div class="field-group">
+          <label>Age</label>
+          <input type="number" name="members[__idx__][age]" min="0" max="120" step="0.5" placeholder="e.g. 35">
+        </div>
+
+        <div class="field-group">
+          <label>Class / Grade (if student)</label>
+          <input type="text" name="members[__idx__][studies_in_class]" placeholder="e.g. Grade 8">
+        </div>
+
+        <div class="field-group field-group--checkbox">
+          <label>
+            <input type="checkbox" name="members[__idx__][financially_dependent]" value="true">
+            Financially dependent on earner(s)
+          </label>
+        </div>
+
+        <button type="button" class="remove-row-btn" aria-label="Remove member">Remove</button>
+      </fieldset>
+    </template>
+
+    <button type="button" id="add-row-btn" class="add-row-btn">+ Add household member</button>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Save &amp; Continue</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const container = document.getElementById('rows-container');
+  const tpl = document.getElementById('row-tpl');
+  let count = container.querySelectorAll('.repeating-row').length;
+
+  function wireRemove(row) {
+    row.querySelector('.remove-row-btn').addEventListener('click', () => row.remove());
+  }
+
+  // Wire existing remove buttons (pre-populated from draft)
+  container.querySelectorAll('.repeating-row').forEach(wireRemove);
+
+  document.getElementById('add-row-btn').addEventListener('click', () => {
+    const frag = tpl.content.cloneNode(true);
+    const row = frag.querySelector('fieldset');
+    // Replace __idx__ in all name attributes and __num__ in legend
+    row.querySelector('legend').textContent = 'Member ' + (count + 1);
+    row.querySelectorAll('[name]').forEach(el => {
+      el.name = el.name.replace(/__idx__/g, count);
+    });
+    wireRemove(row);
+    container.appendChild(row);
+    count++;
+  });
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}MoneySaarthi — Expenses{% endblock %}
+{% block content %}
+<div class="onboarding-wrap">
+
+  <nav class="onboarding-progress" aria-label="Form progress">
+    <span class="progress-label">Step {{ step_index }} of {{ total_steps }}</span>
+    <div class="progress-track">
+      <div class="progress-fill" style="width: {{ (step_index / total_steps * 100)|int }}%;"></div>
+    </div>
+    <ol class="step-list">
+      {% for s in steps %}
+      <li class="step-item {% if s == step %}active{% elif loop.index < step_index %}done{% endif %}">
+        <a href="/onboarding/{{ s }}" class="step-link">{{ s|capitalize }}</a>
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  {% if errors %}
+  <div class="form-error-banner" role="alert">
+    <strong>Please fix the following:</strong>
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/onboarding/{{ step }}" class="step-form">
+    <h2>Monthly Expenses</h2>
+    <p class="step-hint">Enter your regular monthly outgoings by category.</p>
+
+    <div id="rows-container">
+      {% set expense_list = draft.get('expenses', {}).get('expenses', []) %}
+      {% for exp in expense_list %}
+      {% set i = loop.index0 %}
+      <fieldset class="repeating-row">
+        <legend>Expense {{ i + 1 }}</legend>
+
+        <div class="field-group">
+          <label>Category</label>
+          <select name="expenses[{{ i }}][category]" required>
+            <option value="">Select or type below…</option>
+            {% for opt in ['Household','Hospital / Medical','School / Education','Discretionary','Guest / Entertainment','Business','Other'] %}
+            <option value="{{ opt }}" {% if exp.get('category') == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Monthly Amount (₹)</label>
+          <input type="number" name="expenses[{{ i }}][monthly_amount]"
+                 value="{{ exp.get('monthly_amount', '') }}" min="0" step="1" required
+                 placeholder="e.g. 30000">
+        </div>
+
+        <button type="button" class="remove-row-btn">Remove</button>
+      </fieldset>
+      {% endfor %}
+    </div>
+
+    <template id="row-tpl">
+      <fieldset class="repeating-row">
+        <legend>Expense __num__</legend>
+        <div class="field-group">
+          <label>Category</label>
+          <select name="expenses[__idx__][category]" required>
+            <option value="">Select or type below…</option>
+            <option value="Household">Household</option>
+            <option value="Hospital / Medical">Hospital / Medical</option>
+            <option value="School / Education">School / Education</option>
+            <option value="Discretionary">Discretionary</option>
+            <option value="Guest / Entertainment">Guest / Entertainment</option>
+            <option value="Business">Business</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Monthly Amount (₹)</label>
+          <input type="number" name="expenses[__idx__][monthly_amount]" min="0" step="1" required placeholder="e.g. 30000">
+        </div>
+        <button type="button" class="remove-row-btn">Remove</button>
+      </fieldset>
+    </template>
+
+    <button type="button" id="add-row-btn" class="add-row-btn">+ Add expense</button>
+
+    <div class="form-actions">
+      {% if prev_step %}<a href="/onboarding/{{ prev_step }}" class="btn-secondary">Back</a>{% endif %}
+      <button type="submit" class="btn-primary">Save &amp; Continue</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const container = document.getElementById('rows-container');
+  const tpl = document.getElementById('row-tpl');
+  let count = container.querySelectorAll('.repeating-row').length;
+  function wireRemove(row) {
+    row.querySelector('.remove-row-btn').addEventListener('click', () => row.remove());
+  }
+  container.querySelectorAll('.repeating-row').forEach(wireRemove);
+  document.getElementById('add-row-btn').addEventListener('click', () => {
+    const frag = tpl.content.cloneNode(true);
+    const row = frag.querySelector('fieldset');
+    row.querySelector('legend').textContent = 'Expense ' + (count + 1);
+    row.querySelectorAll('[name]').forEach(el => { el.name = el.name.replace(/__idx__/g, count); });
+    wireRemove(row);
+    container.appendChild(row);
+    count++;
+  });
+})();
+</script>
+{% endblock %}

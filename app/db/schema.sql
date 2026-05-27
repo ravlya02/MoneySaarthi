@@ -146,6 +146,18 @@ create table if not exists public.report_jobs (
     updated_at    timestamptz not null default now()
 );
 
+-- 9. ONBOARDING_DRAFTS: server-side partial form state, one row per user.
+--    Accumulates step payloads as JSONB keyed by step name until final submit.
+create table if not exists public.onboarding_drafts (
+    id          uuid primary key default gen_random_uuid(),
+    user_id     uuid not null unique references auth.users(id) on delete cascade,
+    draft       jsonb not null default '{}'::jsonb,
+    updated_at  timestamptz not null default now()
+);
+alter table public.onboarding_drafts enable row level security;
+create index if not exists onboarding_drafts_user_id_idx
+    on public.onboarding_drafts (user_id);
+
 -- 8. MARKET_DATA_CACHE: Web-Search Agent result cache, keyed by (tool, params, date).
 --    Contains only public market data (fund returns, FD/PPF rates etc.) — no PII.
 --    No RLS intentionally: any authenticated read is fine; worker writes via service_role.

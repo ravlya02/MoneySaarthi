@@ -102,3 +102,13 @@ create policy "own goals - update" on public.goals
     for update using ( auth.uid() = user_id ) with check ( auth.uid() = user_id );
 create policy "own goals - delete" on public.goals
     for delete using ( auth.uid() = user_id );
+
+-- Onboarding drafts: full CRUD for the owner.
+create policy "own draft - select" on public.onboarding_drafts
+    for select using ( auth.uid() = user_id );
+create policy "own draft - insert" on public.onboarding_drafts
+    for insert with check ( auth.uid() = user_id );
+create policy "own draft - update" on public.onboarding_drafts
+    for update using ( auth.uid() = user_id ) with check ( auth.uid() = user_id );
+create policy "own draft - delete" on public.onboarding_drafts
+    for delete using ( auth.uid() = user_id );
