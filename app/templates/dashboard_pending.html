@@ -1,20 +1,35 @@
 {% extends "base.html" %}
 {% block title %}Generating — MoneySaarthi{% endblock %}
 {% block content %}
+{% set job_id = job_id | default('') %}
+<div style="max-width:600px;margin:4rem auto;padding:0 1.5rem;text-align:center;">
   <h1>Building your report…</h1>
-  <p>This usually takes about a minute. The page will update automatically.</p>
-  <div id="status">queued</div>
+  <p style="color:#6b7280;">This usually takes about a minute. The page will update automatically.</p>
+  <div class="spinner"></div>
+  <div id="status" style="margin-top:1rem;color:#374151;font-size:.95rem;"></div>
+  <div id="error-banner" class="error-banner" style="display:none;text-align:left;"></div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
-  const jobId = new URLSearchParams(location.search).get('job');
+  // Prefer job_id from template context; fall back to URL param for legacy links.
+  const jobId = "{{ job_id }}" || new URLSearchParams(location.search).get('job');
   async function poll() {
     if (!jobId) return;
     const r = await fetch(`/jobs/${jobId}/status`);
-    const { status } = await r.json();
-    document.getElementById('status').textContent = status;
-    if (status === 'complete') location.href = '/dashboard';
-    else if (status !== 'failed') setTimeout(poll, 3000);
+    const data = await r.json();
+    const { status } = data;
+    if (status === 'complete') {
+      location.href = '/dashboard';
+    } else if (status === 'failed') {
+      document.getElementById('status').textContent = '';
+      const banner = document.getElementById('error-banner');
+      banner.textContent = data.error_detail || 'Report generation failed. Please try again.';
+      banner.style.display = 'block';
+    } else {
+      document.getElementById('status').textContent = status;
+      setTimeout(poll, 3000);
+    }
   }
   poll();
 </script>

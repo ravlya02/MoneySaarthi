@@ -1,23 +1,90 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — MoneySaarthi{% endblock %}
 {% block content %}
-  <h1>Your Financial Plan</h1>
+<div style="max-width:1100px;margin:2rem auto;padding:0 1.5rem;">
 
-  <section>
-    <h2>Asset Allocation</h2>
-    <div id="allocChart" style="width:100%;height:380px;"></div>
+  {# ── 1. Page heading ─────────────────────────────────────────────── #}
+  <h1 style="margin-bottom:.25rem;">Your Financial Plan</h1>
+  <p class="report-date">Generated: {{ report.generated_at[:10] }}</p>
+
+  {# ── 2. Tax summary card ──────────────────────────────────────────── #}
+  <div class="card tax-summary-card">
+    <h2 style="margin-top:0;">Tax Summary</h2>
+    <div class="stat-row">
+      <div class="stat-card">
+        <span class="stat-label">Old Regime Tax</span>
+        <span class="stat-value">₹{{ "{:,.0f}".format(report.old_regime_tax | float) }}</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">New Regime Tax</span>
+        <span class="stat-value">₹{{ "{:,.0f}".format(report.new_regime_tax | float) }}</span>
+      </div>
+    </div>
+    <span class="badge badge-{{ 'green' if report.recommended_regime == 'New' else 'amber' }}">
+      {{ report.recommended_regime }} Regime Recommended
+    </span>
+  </div>
+
+  {# ── 3. AI narrative (hidden when None) ──────────────────────────── #}
+  {% if report.ai_narrative %}
+  <section class="card">
+    <h2 style="margin-top:0;">AI Analysis</h2>
+    <p class="narrative" style="line-height:1.7;color:#374151;">{{ report.ai_narrative }}</p>
   </section>
+  {% endif %}
 
-  <section>
-    <h2>Tax: Old vs New Regime</h2>
-    <div id="taxChart" style="width:100%;height:380px;"></div>
+  {# ── 4. Action items (hidden when empty) ─────────────────────────── #}
+  {% if report.ai_action_items %}
+  <section class="card">
+    <h2 style="margin-top:0;">Action Items</h2>
+    {% for item in report.ai_action_items %}
+    <div class="action-item">
+      <strong>{{ item.action }}</strong>
+      {% if item.instrument %}
+      <span class="instrument">{{ item.instrument }}</span>
+      {% endif %}
+      <p class="rationale">{{ item.rationale }}</p>
+    </div>
+    {% endfor %}
   </section>
+  {% endif %}
 
+  {# ── 5 & 6. Charts ───────────────────────────────────────────────── #}
+  <div class="chart-grid">
+    <div class="card">
+      <h2 style="margin-top:0;">Asset Allocation</h2>
+      <div id="allocChart" style="height:380px;"></div>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0;">Tax: Old vs New Regime</h2>
+      <div id="taxChart" style="height:380px;"></div>
+    </div>
+  </div>
+
+  {# ── 7. Goal funding rows ─────────────────────────────────────────── #}
+  {% if plan and plan.plan_detail and plan.plan_detail.goal_funding %}
+  <section class="card">
+    <h2 style="margin-top:0;">Goal Funding</h2>
+    {% for g in plan.plan_detail.goal_funding %}
+    <div class="goal-row">
+      <span class="goal-name">{{ g.goal_name }}</span>
+      <span class="badge badge-{{ 'green' if g.status == 'on-track' else ('amber' if g.status == 'surplus' else 'red') }}">
+        {{ g.status }}
+      </span>
+      <span class="sip">SIP: ₹{{ "{:,.0f}".format(g.suggested_monthly_sip | float) }}/mo</span>
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {# ── 8. Disclaimer ───────────────────────────────────────────────── #}
   <p class="disclaimer">
     This is algorithmic guidance, not a substitute for a registered investment
     adviser or chartered accountant. Verify before acting. Market data shown
     with as-of timestamps.
   </p>
+
+</div>
 {% endblock %}
 
 {% block scripts %}

@@ -1,8 +1,10 @@
+from urllib.parse import quote as _urlquote
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.config import Settings, get_settings
-from app.db.supabase_client import service_client
+from app.db.supabase_client import anon_client, service_client
 from app.dependencies import current_user, optional_user
 from app.models.auth import LoginPayload, RegisterPayload, SessionPayload
 from app.routers.templates import templates
@@ -30,6 +32,7 @@ async def login_page(
     request: Request,
     next: str = "/dashboard",
     logged_out: bool = False,
+    error: str = "",
     settings: Settings = Depends(get_settings),
 ):
     # Bounce already-authenticated users straight to their destination.
@@ -39,6 +42,7 @@ async def login_page(
     return templates.TemplateResponse(request=request, name="login.html", context={
         "next_url": _safe_next(next),
         "logged_out": logged_out,
+        "login_error": error,
     })
 
 
@@ -71,51 +75,46 @@ async def register(payload: RegisterPayload):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/auth/login", status_code=204)
+@router.post("/auth/login")
 async def login_user(
-    payload: LoginPayload,
-    response: Response,
+    request: Request,
     settings: Settings = Depends(get_settings),
 ):
     """Server-side sign-in — no Supabase JS required.
 
-    Creates a fresh client per request (avoids shared session state from the
-    cached anon_client). If Supabase returns 'Email not confirmed' the admin API
-    auto-confirms the account and retries, so existing unconfirmed accounts are
-    silently healed on first login.
+    Supports two call styles:
+    • JSON body (Content-Type: application/json) — used by register.html's fetch();
+      returns 204 + Set-Cookie on success, 400 JSON on failure.
+    • Form data (Content-Type: application/x-www-form-urlencoded) — used by the
+      native POST from login.html; returns 303 → /dashboard on success,
+      303 → /login?error=… on failure (browser handles navigation; no JS redirect).
     """
-    from supabase import create_client as _create
+    is_json = "application/json" in request.headers.get("content-type", "")
 
-    sb = _create(settings.supabase_url, settings.supabase_anon_key)
-
-    def _do_signin():
-        return sb.auth.sign_in_with_password(
-            {"email": payload.email, "password": payload.password}
-        )
+    if is_json:
+        body = LoginPayload(**await request.json())
+        email, password = body.email, body.password
+        dest = "/dashboard"
+    else:
+        form = await request.form()
+        email = str(form.get("email", ""))
+        password = str(form.get("password", ""))
+        dest = _safe_next(str(form.get("next", "/dashboard")))
 
     try:
-        result = _do_signin()
+        result = anon_client().auth.sign_in_with_password(
+            {"email": email, "password": password}
+        )
     except Exception as exc:
-        if "not confirmed" in str(exc).lower():
-            # Heal legacy / unconfirmed accounts: find by email, force-confirm, retry.
-            try:
-                all_users = service_client().auth.admin.list_users()
-                user = next((u for u in all_users if u.email == payload.email), None)
-                if user:
-                    service_client().auth.admin.update_user_by_id(
-                        str(user.id), {"email_confirm": True}
-                    )
-                    result = _do_signin()  # retry after confirmation
-                else:
-                    raise HTTPException(status_code=400, detail="Account not found.") from exc
-            except HTTPException:
-                raise
-            except Exception as exc2:
-                raise HTTPException(status_code=400, detail=str(exc2)) from exc2
-        else:
+        if is_json:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # Server-side redirect back to login with the error visible in the page.
+        return RedirectResponse(
+            f"/login?error={_urlquote(str(exc), safe='')}&next={dest}",
+            status_code=303,
+        )
 
-    response.set_cookie(
+    _cookie = dict(
         key="access_token",
         value=result.session.access_token,
         httponly=True,
@@ -123,6 +122,17 @@ async def login_user(
         max_age=3600,
         secure=not settings.debug,
     )
+
+    if is_json:
+        # Existing API behaviour: 204 + Set-Cookie (used by register.html fetch).
+        r = Response(status_code=204)
+        r.set_cookie(**_cookie)
+        return r
+
+    # Form path: 303 redirect — browser follows it with the cookie already set.
+    r = RedirectResponse(dest, status_code=303)
+    r.set_cookie(**_cookie)
+    return r
 
 
 @router.post("/auth/session", status_code=204)

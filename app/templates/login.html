@@ -22,17 +22,26 @@
       {% if logged_out %}
       <p class="auth-notice">You have been signed out.</p>
       {% endif %}
+      {% if login_error %}
+      <p class="auth-error">{{ login_error }}</p>
+      {% endif %}
       <p id="auth-error" class="auth-error" hidden></p>
 
-      <form id="auth-form" novalidate>
+      {# Native POST — server sets cookie and redirects to /dashboard (303).
+         JS is used only for client-side validation before the form submits. #}
+      <form id="auth-form" method="POST" action="/auth/login" novalidate>
+        <input type="hidden" name="next" value="{{ next_url }}">
+
         <div class="field-group">
           <label for="email">Your email</label>
-          <input type="email" id="email" placeholder="Enter your email" autocomplete="email" required>
+          <input type="email" id="email" name="email"
+                 placeholder="Enter your email" autocomplete="email" required>
         </div>
 
         <div class="field-group">
           <label for="password">Password</label>
-          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required>
+          <input type="password" id="password" name="password"
+                 placeholder="Enter your password" autocomplete="current-password" required>
         </div>
 
         <button type="submit" id="submit-btn" class="btn-primary">
@@ -52,8 +61,8 @@
 
 {% block scripts %}
 <script>
-  const nextUrl = "{{ next_url | default('/dashboard') }}";
-
+  // JS is validation-only. The form uses a native POST so the server sets the
+  // cookie and issues a 303 → /dashboard redirect without any JS redirect.
   const form      = document.getElementById("auth-form");
   const emailEl   = document.getElementById("email");
   const passEl    = document.getElementById("password");
@@ -67,35 +76,21 @@
     errorEl.hidden = false;
   }
   function clearError() { errorEl.hidden = true; }
-  function setLoading(on) {
-    submitBtn.disabled = on;
-    btnLabel.hidden = on;
-    btnSpinner.hidden = !on;
-  }
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  form.addEventListener("submit", (e) => {
     clearError();
     const email    = emailEl.value.trim();
     const password = passEl.value;
-    if (!email || !password) { showError("Email and password are required."); return; }
-
-    setLoading(true);
-    const resp = await fetch("/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-    setLoading(false);
-
-    if (!resp.ok) {
-      const body = await resp.json().catch(() => ({}));
-      showError(body.detail || "Sign-in failed. Please try again.");
+    if (!email || !password) {
+      e.preventDefault();   // block submit only when validation fails
+      showError("Email and password are required.");
       return;
     }
-
-    // Cookie is set server-side by /auth/login — just redirect.
-    window.location.href = nextUrl;
+    // Validation passed — show loading state then let the native POST proceed.
+    submitBtn.disabled = true;
+    btnLabel.hidden    = true;
+    btnSpinner.hidden  = false;
+    // No e.preventDefault() — browser submits the form; server redirects.
   });
 </script>
 {% endblock %}
