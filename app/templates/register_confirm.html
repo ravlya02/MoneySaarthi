@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Confirm your email — MoneySaarthi{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+
+  <!-- Left: brand panel -->
+  <div class="login-brand">
+    <svg class="brand-logo" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M40 8 C28 8 18 20 20 34 C22 46 32 52 40 72 C48 52 58 46 60 34 C62 20 52 8 40 8Z" fill="#1a56db" opacity="0.9"/>
+      <path d="M28 30 C24 22 30 14 40 14 C38 22 34 28 28 30Z" fill="#fff" opacity="0.7"/>
+      <path d="M52 30 C56 22 50 14 40 14 C42 22 46 28 52 30Z" fill="#fff" opacity="0.5"/>
+      <path d="M40 14 C40 24 40 36 40 48" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+    </svg>
+    <h1 class="brand-name">MoneySaarthi</h1>
+    <p class="brand-tagline">Your AI-powered finance advisor</p>
+  </div>
+
+  <!-- Right: confirmation panel -->
+  <div class="login-form-panel">
+    <div class="login-card">
+      <h2 style="color:#fff; margin:0 0 1rem; font-size:1.4rem; font-weight:700;">Check your inbox</h2>
+      <p style="color:#e2e8f0; font-size:.95rem; margin:0 0 1.75rem; line-height:1.6;">
+        We've sent a confirmation link to your email address.
+        Click the link to activate your account, then return here to sign in.
+      </p>
+      <a href="/login" class="btn-primary" style="display:block; text-align:center; text-decoration:none; line-height:1;">
+        Go to Sign In
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

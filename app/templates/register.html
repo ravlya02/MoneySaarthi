@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Create account — MoneySaarthi{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+
+  <!-- Left: brand panel -->
+  <div class="login-brand">
+    <svg class="brand-logo" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M40 8 C28 8 18 20 20 34 C22 46 32 52 40 72 C48 52 58 46 60 34 C62 20 52 8 40 8Z" fill="#1a56db" opacity="0.9"/>
+      <path d="M28 30 C24 22 30 14 40 14 C38 22 34 28 28 30Z" fill="#fff" opacity="0.7"/>
+      <path d="M52 30 C56 22 50 14 40 14 C42 22 46 28 52 30Z" fill="#fff" opacity="0.5"/>
+      <path d="M40 14 C40 24 40 36 40 48" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+    </svg>
+    <h1 class="brand-name">MoneySaarthi</h1>
+    <p class="brand-tagline">Your AI-powered finance advisor</p>
+  </div>
+
+  <!-- Right: form panel -->
+  <div class="login-form-panel">
+    <div class="login-card">
+      <p id="auth-error" class="auth-error" hidden></p>
+
+      <form id="register-form" novalidate>
+        <div class="field-group">
+          <label for="full-name">Full name</label>
+          <input type="text" id="full-name" placeholder="Your full name" autocomplete="name" required>
+        </div>
+
+        <div class="field-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="Enter your email" autocomplete="email" required>
+        </div>
+
+        <div class="field-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" required>
+        </div>
+
+        <div class="field-group">
+          <label for="confirm-password">Confirm password</label>
+          <input type="password" id="confirm-password" placeholder="Repeat your password" autocomplete="new-password" required>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-primary">
+          <span id="btn-label">CREATE ACCOUNT</span>
+          <span id="btn-spinner" hidden>...</span>
+        </button>
+
+        <p class="toggle-line">
+          Already have an account? <a href="/login" class="form-link">Sign In</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+  const _sb = supabase.createClient("{{ supabase_url }}", "{{ supabase_anon_key }}");
+
+  const form        = document.getElementById("register-form");
+  const fullNameEl  = document.getElementById("full-name");
+  const emailEl     = document.getElementById("email");
+  const passEl      = document.getElementById("password");
+  const confirmEl   = document.getElementById("confirm-password");
+  const errorEl     = document.getElementById("auth-error");
+  const submitBtn   = document.getElementById("submit-btn");
+  const btnLabel    = document.getElementById("btn-label");
+  const btnSpinner  = document.getElementById("btn-spinner");
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.hidden = false;
+  }
+  function clearError() { errorEl.hidden = true; }
+  function setLoading(on) {
+    submitBtn.disabled = on;
+    btnLabel.hidden = on;
+    btnSpinner.hidden = !on;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError();
+
+    const fullName = fullNameEl.value.trim();
+    const email    = emailEl.value.trim();
+    const password = passEl.value;
+    const confirm  = confirmEl.value;
+
+    // Client-side validation — runs BEFORE any network call.
+    if (!fullName) { showError("Full name is required."); return; }
+    if (!email)    { showError("Email is required."); return; }
+    if (password.length < 8) {
+      showError("Password must be at least 8 characters.");
+      return;
+    }
+    if (password !== confirm) {
+      showError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+
+    // Step 1: server-side account creation — admin API sets email_confirm=True
+    // so Supabase never blocks sign-in with "Email not confirmed".
+    const createResp = await fetch("/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ full_name: fullName, email, password }),
+    });
+    if (!createResp.ok) {
+      setLoading(false);
+      const body = await createResp.json().catch(() => ({}));
+      showError(body.detail || "Registration failed. Please try again.");
+      return;
+    }
+
+    // Step 2: sign in to obtain a session.
+    const { data, error: signInError } = await _sb.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (signInError) { showError(signInError.message); return; }
+
+    // Step 3: store session cookie server-side, then enter the onboarding flow.
+    await fetch("/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        access_token:  data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      }),
+    });
+    window.location.href = "/onboarding/demographics";
+  });
+</script>
+{% endblock %}

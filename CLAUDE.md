@@ -72,10 +72,121 @@ Three cooperating parts feeding one assembled prompt:
   transition so a refresh never loses a half-entered sheet. No SPA. (§D.2)
 
 ## Repo layout
-- `documents/architecture.md` — authoritative reference design (read first).
-- `documents/tax_document.pdf`, `documents/Investment_analysis_and_portfolio_management.pdf` — domain
-  references for tax rules and investment management.
+```
+app/
+  config.py              — pydantic-settings (env vars, assessment_year, debug flag)
+  main.py                — FastAPI app; mounts /static; includes all routers
+  dependencies.py        — JWT verification → CurrentUser (user_id from token only)
+  db/
+    supabase_client.py   — anon_client() + service_client() (lru_cache singletons)
+    schema.sql           — full DDL (all 12 tables + indexes + RLS enable)
+    policies.sql         — RLS SELECT/INSERT/UPDATE policies per table
+    triggers.sql         — updated_at trigger on profiles & report_jobs
+    apply.py             — SQL-aware migration runner (loads .env, parses $$ blocks)
+  models/
+    auth.py              — SessionPayload (access_token, refresh_token)
+    intake.py            — Pydantic intake models: HouseholdMember, IncomeSource,
+                           Expense, Liability, Holding, InsurancePolicy, Goal,
+                           IntakeSubmission. All money fields are Decimal.
+    reports.py           — TaxResult, Allocation, GoalFunding, EngineOutput,
+                           AINarrative (output models)
+  engine/
+    tax/rules.py         — RULES_BY_AY dict (AY 2026-27 new-regime slabs + 87A rebate)
+    tax/compute.py       — compute_new_regime(), compute_tax() (old regime → stub)
+    allocation.py        — current_allocation(), target_allocation() by risk profile
+    goals.py             — evaluate_goal() (placeholder logic)
+    runner.py            — run_engine() top-level entry point
+  ai/
+    web_search.py        — gather_market_data() (Gemini function-calling, bounded)
+    rag.py               — retrieve_tax_passages(), retrieve_strategy_passages()
+    gemini.py            — synthesize() — calls Gemini, returns AINarrative
+    prompts.py           — build_prompt() — assembles [VERIFIED FACTS] + sections
+    validation.py        — assert_no_hallucinated_numbers()
+    orchestrator.py      — enrich_and_synthesize() — coordinates all AI parts
+  worker/jobs.py         — generate_report() background task (engine → AI → DB)
+  charts/figures.py      — Plotly figure builders (scaffold)
+  routers/
+    auth.py              — GET /login, POST /auth/session, POST /auth/logout, GET /
+    onboarding.py        — GET+POST /onboarding/{step}, POST /onboarding/submit
+    dashboard.py         — GET /dashboard, GET /jobs/{job_id}/status
+    health.py            — GET /health
+    templates.py         — Jinja2Templates singleton
+  templates/
+    base.html            — CDN Plotly, nav, block content
+    login.html           — Supabase JS Auth, POSTs JWT to /auth/session
+    dashboard.html       — report view (Plotly hydration wired up TODO)
+    dashboard_pending.html — polling / "generating" state
+    onboarding/
+      demographics.html  — placeholder form skeleton
+documents/
+  architecture.md        — authoritative reference design (read first)
+  tax_document.pdf       — Income Tax Act 2025 reference
+  Investment_analysis_and_portfolio_management.pdf — portfolio domain reference
+tests/
+  test_tax.py            — 2 unit tests: sub-rebate → 0 tax; high income → tax > 0
+requirements.txt         — fastapi, uvicorn, jinja2, pydantic>=2, pydantic-settings,
+                           supabase, httpx, google-generativeai, qdrant-client,
+                           plotly, python-jose[cryptography], psycopg2-binary>=2.9
+```
 
-## Status
-Greenfield — no application code scaffolded yet. Build/test/lint commands to be added here once tooling
-lands.
+## Build / run / test
+```bash
+# Install dependencies (activate venv first)
+pip install -r requirements.txt
+
+# Run dev server
+uvicorn app.main:app --reload
+
+# Run tests
+pytest tests/
+
+# Apply DB migrations (requires .env with SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)
+python app/db/apply.py app/db/schema.sql
+python app/db/apply.py app/db/policies.sql
+python app/db/apply.py app/db/triggers.sql
+```
+
+## Environment variables (`.env`)
+```
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_JWT_SECRET=
+GEMINI_API_KEY=
+QDRANT_URL=
+QDRANT_API_KEY=
+WEB_SEARCH_API_KEY=
+DEBUG=false
+```
+
+## What is done vs. TODO
+
+### ✅ Done
+- **Database:** Full schema (12 tables), RLS policies, triggers, SQL migration runner
+- **Auth:** Login page (Supabase JS), JWT verification, session cookie, logout
+- **App scaffold:** FastAPI app, all routers wired, Jinja2 templates, static mount
+- **Config:** pydantic-settings loading from `.env`
+- **Supabase clients:** anon + service_role, correctly scoped
+- **Intake models:** All Pydantic models with Decimal money fields
+- **Report models:** TaxResult, Allocation, GoalFunding, EngineOutput, AINarrative
+- **Tax engine (new regime):** AY 2026-27 slabs, 87A rebate, cess — unit-tested
+- **Allocation engine:** current_allocation from holdings, target by risk profile
+- **Engine runner:** run_engine() wires tax + allocation + goals
+- **Background worker:** generate_report() — engine → AI degrade path → DB writes
+- **AI subsystem:** All modules scaffolded (web_search, rag, gemini, prompts, validation, orchestrator)
+- **Worker DB writes:** tax_reports + investment_plans via service_role
+- **Dashboard routes:** dashboard + job status poll endpoint
+- **Onboarding routes:** step GET + final POST /submit with job enqueue
+
+### 🔲 TODO (next steps)
+- **Old-regime tax:** implement slabs + 80C/80D/HRA deductions in `compute_old_regime()`
+- **Onboarding templates:** full multi-step HTML forms for all 8 steps (only demographics placeholder exists)
+- **Partial state persistence:** server-side session store for in-progress form data across steps
+- **Input versioning:** auto-increment `version` per user (currently hardcoded to `1`)
+- **Normalized fan-out:** write income_sources, expenses, liabilities, holdings, insurance_policies, goals from intake submission
+- **Goals engine:** implement real goal-funding math in `evaluate_goal()`
+- **Plotly figures:** implement allocation + tax figure builders in `charts/figures.py`; wire into dashboard template
+- **Dashboard SSE/poll:** frontend JS to poll `/jobs/{job_id}/status` and refresh on complete
+- **RAG corpus:** ingest tax & portfolio PDFs into Qdrant collections
+- **User registration flow:** sign-up page (currently only login exists)
+- **Profile creation:** auto-create `profiles` row on first login (trigger or router)
