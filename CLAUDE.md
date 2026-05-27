@@ -76,10 +76,8 @@ All authentication is **fully server-side** — no Supabase JS SDK in any templa
 
 - **`POST /register`** — admin API (`service_role` key) calls `admin.create_user({email_confirm: True})`.
   Email verification is disabled; accounts are immediately active. Never passes credentials to the browser.
-- **`POST /auth/login`** — creates a fresh `supabase` client per request (avoids shared session state
-  from `lru_cache`d `anon_client`). Signs in with password server-side and sets an HttpOnly cookie.
-  Auto-heals legacy unconfirmed accounts: if Supabase returns "not confirmed", finds the user via
-  `admin.list_users()`, calls `admin.update_user_by_id(id, {email_confirm: True})`, then retries.
+- **`POST /auth/login`** — uses `anon_client()` to sign in with password server-side and sets an
+  HttpOnly `access_token` cookie. No per-request client; no auto-heal logic.
 - **`optional_user()`** — returns `CurrentUser | None`, never raises. Used on SSR pages to redirect
   unauthenticated users without triggering a 401 JSON response.
 - **`current_user()`** — raises `HTTPException(401)`. Used only on JSON API endpoints (e.g. job status).
@@ -192,7 +190,7 @@ DEBUG=false
 ### ✅ Done
 - **Database:** Full schema (12 tables), RLS policies, triggers, SQL migration runner
 - **Auth — session & logout:** JWT verification, HttpOnly session cookie, `POST /auth/logout` with `?logged_out=1` banner (Step 01/02)
-- **Auth — server-side login:** `POST /auth/login` — fresh client per request, HttpOnly cookie set server-side, auto-heals legacy unconfirmed accounts via admin API (Step 04)
+- **Auth — server-side login:** `POST /auth/login` — uses `anon_client()` for sign-in, HttpOnly `access_token` cookie set server-side (Step 04)
 - **Auth — registration:** `GET /register` + `POST /register` — admin API with `email_confirm=True`; email verification disabled (Step 03)
 - **Auth — redirect guards:** `optional_user()` dependency; `GET /login` and `GET /register` redirect authenticated users to dashboard; all protected SSR routes redirect unauthenticated users to `/login?next=<path>` with open-redirect prevention (Step 04)
 - **Auth — no Supabase JS:** neither `login.html` nor `register.html` loads the Supabase JS SDK or exposes any key to the browser; all sign-in/sign-up is server-side (Steps 03–04)
