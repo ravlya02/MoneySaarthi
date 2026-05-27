@@ -5,8 +5,9 @@ submit validates with Pydantic, writes financial_inputs, and enqueues a job."""
 from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from app.config import Settings, get_settings
 from app.db.supabase_client import anon_client
-from app.dependencies import CurrentUser, current_user
+from app.dependencies import CurrentUser, current_user, optional_user
 from app.models.intake import IntakeSubmission
 from app.routers.templates import templates
 from app.worker.jobs import generate_report
@@ -17,8 +18,14 @@ STEPS = ["demographics", "income", "expenses", "loans", "investments", "insuranc
 
 
 @router.get("/{step}", response_class=HTMLResponse)
-async def step_page(step: str, request: Request, user: CurrentUser = Depends(current_user)):
-    return templates.TemplateResponse(request=request, name=f"onboarding/{step}.html", context={"step": step, "steps": STEPS})
+async def step_page(step: str, request: Request, settings: Settings = Depends(get_settings)):
+    user = optional_user(request, settings)
+    if user is None:
+        return RedirectResponse(f"/login?next=/onboarding/{step}", status_code=302)
+    return templates.TemplateResponse(
+        request=request, name=f"onboarding/{step}.html",
+        context={"step": step, "steps": STEPS, "authenticated": True},
+    )
 
 
 @router.post("/submit")

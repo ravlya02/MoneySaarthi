@@ -19,6 +19,9 @@
   <!-- Right: form panel -->
   <div class="login-form-panel">
     <div class="login-card">
+      {% if logged_out %}
+      <p class="auth-notice">You have been signed out.</p>
+      {% endif %}
       <p id="auth-error" class="auth-error" hidden></p>
 
       <form id="auth-form" novalidate>
@@ -48,9 +51,8 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-  const _sb = supabase.createClient("{{ supabase_url }}", "{{ supabase_anon_key }}");
+  const nextUrl = "{{ next_url | default('/dashboard') }}";
 
   const form      = document.getElementById("auth-form");
   const emailEl   = document.getElementById("email");
@@ -79,22 +81,21 @@
     if (!email || !password) { showError("Email and password are required."); return; }
 
     setLoading(true);
-    const { data, error } = await _sb.auth.signInWithPassword({ email, password });
-    setLoading(false);
-
-    if (error) { showError(error.message); return; }
-
-    const session = data.session;
-    await fetch("/auth/session", {
+    const resp = await fetch("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        access_token:  session.access_token,
-        refresh_token: session.refresh_token,
-      }),
+      body: JSON.stringify({ email, password }),
     });
-    window.location.href = "/dashboard";
-  });
+    setLoading(false);
 
+    if (!resp.ok) {
+      const body = await resp.json().catch(() => ({}));
+      showError(body.detail || "Sign-in failed. Please try again.");
+      return;
+    }
+
+    // Cookie is set server-side by /auth/login — just redirect.
+    window.location.href = nextUrl;
+  });
 </script>
 {% endblock %}

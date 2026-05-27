@@ -22,6 +22,18 @@ def _extract_token(request: Request) -> str:
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Missing credentials")
 
 
+def optional_user(
+    request: Request, settings: Settings = Depends(get_settings)
+) -> CurrentUser | None:
+    """Returns CurrentUser or None — never raises. Safe for public pages that
+    only need to *check* auth (e.g. redirect already-signed-in visitors away
+    from /login and /register)."""
+    try:
+        return current_user(request, settings)
+    except HTTPException:
+        return None
+
+
 def current_user(
     request: Request, settings: Settings = Depends(get_settings)
 ) -> CurrentUser:

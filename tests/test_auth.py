@@ -47,7 +47,7 @@ def test_logout_clears_cookie(client: TestClient):
     client.cookies.set("access_token", "tok.abc.123")
     resp = client.post("/auth/logout", follow_redirects=False)
     assert resp.status_code == 302
-    assert resp.headers["location"] == "/login"
+    assert resp.headers["location"] == "/login?logged_out=1"
     # Cookie should be deleted (max-age=0 or empty value in Set-Cookie)
     raw = resp.headers.get("set-cookie", "")
     assert "access_token" in raw
@@ -61,9 +61,10 @@ def test_login_page_renders(client: TestClient):
     body = resp.text
     assert 'id="email"' in body
     assert 'id="password"' in body
-    assert "anon-key" in body          # anon key present in rendered HTML
+    # Login is now fully server-side — no Supabase keys in the HTML.
     assert "service-key" not in body   # service_role key must never appear
     assert "secret" not in body        # jwt_secret must never appear
+    assert "/auth/login" in body       # server-side login endpoint is called
 
 
 def test_root_no_cookie_redirects_to_login(client: TestClient):

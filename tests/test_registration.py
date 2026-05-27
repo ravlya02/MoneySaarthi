@@ -49,11 +49,17 @@ def test_register_page_returns_200(client: TestClient):
     assert 'id="confirm-password"' in body
 
 
-def test_register_contains_anon_key(client: TestClient):
-    """The anon key must be present in the page so Supabase JS can initialise."""
+def test_register_uses_server_side_auth_only(client: TestClient):
+    """Register page must use server endpoints only — no Supabase JS keys in HTML."""
     resp = client.get("/register")
     assert resp.status_code == 200
-    assert _FAKE_SETTINGS.supabase_anon_key in resp.text
+    body = resp.text
+    # Server endpoints are called, not Supabase JS directly.
+    assert 'fetch("/register"' in body
+    assert 'fetch("/auth/login"' in body
+    # No Supabase keys should be injected into the page.
+    assert _FAKE_SETTINGS.supabase_anon_key not in body
+    assert _FAKE_SETTINGS.supabase_service_role_key not in body
 
 
 def test_register_does_not_expose_secrets(client: TestClient):
@@ -71,14 +77,15 @@ def test_register_confirm_route_removed(client: TestClient):
     assert resp.status_code == 404
 
 
-def test_register_js_uses_server_endpoint_not_supabase_signup(client: TestClient):
-    """Page JS must POST to /register (server-side), not call supabase.auth.signUp."""
+def test_register_js_uses_server_endpoints_only(client: TestClient):
+    """Page JS must use server endpoints only — no Supabase JS calls."""
     resp = client.get("/register")
     assert resp.status_code == 200
     body = resp.text
-    assert 'fetch("/register"' in body   # server-side creation
-    assert "signInWithPassword" in body  # then sign in
-    assert "auth.signUp" not in body     # no client-side signUp
+    assert 'fetch("/register"' in body       # server-side account creation
+    assert 'fetch("/auth/login"' in body     # server-side sign-in
+    assert "auth.signUp" not in body         # no client-side signUp
+    assert "signInWithPassword" not in body  # no client-side signIn
 
 
 # ── POST /register ───────────────────────────────────────────────────────────
