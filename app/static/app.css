@@ -154,24 +154,6 @@ section { margin-block: 2rem; }
 .btn-primary:hover:not(:disabled) { background: #0f3ba8; }
 .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
 
-.btn-google {
-  width: 100%;
-  padding: .7rem;
-  background: var(--white);
-  color: #1e293b;
-  border: none;
-  border-radius: 6px;
-  font-size: .875rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .6rem;
-  margin-bottom: 1.25rem;
-  transition: background .15s;
-}
-.btn-google:hover { background: #f1f5f9; }
 
 .toggle-line {
   text-align: center;
