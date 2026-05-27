@@ -10,3 +10,4 @@ google-generativeai
 qdrant-client
 plotly
 python-jose[cryptography]
+psycopg2-binary>=2.9
