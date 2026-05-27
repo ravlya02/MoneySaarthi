@@ -39,23 +39,92 @@ FILES = ["schema.sql", "policies.sql", "triggers.sql"]
 
 
 def split_statements(sql: str) -> list[str]:
-    """Split a SQL file into individual statements on ';'.
+    """Split a SQL file into individual statements, correctly handling:
 
-    Strips comments-only and whitespace-only chunks so we don't send empty
-    statements to Postgres.
+    - ``-- line comments``   (semicolons inside are NOT delimiters)
+    - ``/* block comments */``
+    - Dollar-quoted strings  (``$$...$$`` or ``$tag$...$tag$``) used in PL/pgSQL
+    - Single-quoted strings  (``'...'``)
+
+    Only a bare ``;`` that appears outside all of the above is treated as a
+    statement terminator.
     """
-    raw = sql.split(";")
-    stmts = []
-    for chunk in raw:
-        stripped = chunk.strip()
-        if not stripped:
+    statements: list[str] = []
+    i = 0
+    start = 0
+    n = len(sql)
+
+    while i < n:
+        ch = sql[i]
+
+        # ── Line comment: skip everything until end of line ─────────────────
+        if ch == "-" and i + 1 < n and sql[i + 1] == "-":
+            while i < n and sql[i] != "\n":
+                i += 1
             continue
-        # Skip chunks that are nothing but SQL line comments
-        lines = [ln.strip() for ln in stripped.splitlines() if ln.strip()]
-        non_comment = [ln for ln in lines if not ln.startswith("--")]
+
+        # ── Block comment: /* ... */ ─────────────────────────────────────────
+        if ch == "/" and i + 1 < n and sql[i + 1] == "*":
+            i += 2
+            while i < n - 1 and not (sql[i] == "*" and sql[i + 1] == "/"):
+                i += 1
+            i += 2  # skip closing */
+            continue
+
+        # ── Dollar-quoted string: $$…$$ or $tag$…$tag$ ───────────────────────
+        if ch == "$":
+            # Collect the tag: characters between the two $
+            j = i + 1
+            while j < n and sql[j] != "$" and sql[j] not in ("\n", " ", "\t"):
+                j += 1
+            if j < n and sql[j] == "$":
+                tag = sql[i : j + 1]  # e.g. '$$' or '$body$'
+                close = sql.find(tag, j + 1)
+                if close >= 0:
+                    i = close + len(tag)
+                    continue
+            # Not a valid dollar-quote opening; fall through to default advance
+
+        # ── Single-quoted string: '…' ('' is an escaped quote) ───────────────
+        if ch == "'":
+            i += 1
+            while i < n:
+                if sql[i] == "'" and i + 1 < n and sql[i + 1] == "'":
+                    i += 2  # escaped quote
+                    continue
+                if sql[i] == "'":
+                    break
+                i += 1
+            i += 1  # skip closing quote
+            continue
+
+        # ── Statement terminator ──────────────────────────────────────────────
+        if ch == ";":
+            stmt = sql[start:i].strip()
+            if stmt:
+                non_comment = [
+                    ln.strip()
+                    for ln in stmt.splitlines()
+                    if ln.strip() and not ln.strip().startswith("--")
+                ]
+                if non_comment:
+                    statements.append(stmt)
+            start = i + 1
+
+        i += 1
+
+    # Anything after the last ';'
+    remaining = sql[start:].strip()
+    if remaining:
+        non_comment = [
+            ln.strip()
+            for ln in remaining.splitlines()
+            if ln.strip() and not ln.strip().startswith("--")
+        ]
         if non_comment:
-            stmts.append(stripped)
-    return stmts
+            statements.append(remaining)
+
+    return statements
 
 
 def main() -> None:
