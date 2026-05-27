@@ -112,8 +112,9 @@ def _make_db_mock(**table_data):
     """Return a mock anon DB client.
 
     ``table_data`` maps table_name → list-of-rows.  Each table mock supports
-    the two chain patterns used in dashboard.py:
-      - .select().eq().order().limit().execute()   (list queries)
+    the chain patterns used in dashboard.py:
+      - .select().eq().order().limit().execute()   (ordered list queries)
+      - .select().eq().limit().execute()            (financial_inputs check)
       - .select().eq().eq().single().execute()      (job_status query)
     """
     db = MagicMock()
@@ -121,8 +122,11 @@ def _make_db_mock(**table_data):
     def table_side_effect(name):
         rows = table_data.get(name, [])
         t = MagicMock()
-        # List-query chain
+        # Ordered list-query chain (tax_reports, investment_plans, report_jobs)
         t.select.return_value.eq.return_value.order.return_value \
+            .limit.return_value.execute.return_value.data = rows
+        # Unordered limit chain (financial_inputs presence check)
+        t.select.return_value.eq.return_value \
             .limit.return_value.execute.return_value.data = rows
         # Single-row chain (job_status: .eq().eq().single())
         t.select.return_value.eq.return_value.eq.return_value \
@@ -249,10 +253,14 @@ def test_goal_funding_absent_when_no_plan(auth_client):
 
 # ── Pending-state tests ──────────────────────────────────────────────────────
 
+_HAS_INPUTS = [{"id": "input-uuid-1"}]  # user has submitted intake data
+
+
 def test_pending_with_queued_job_embeds_job_id(auth_client):
-    """No report + a queued job → pending page with job_id in the template context."""
+    """No report + submitted data + a queued job → pending page with job_id embedded."""
     db = _make_db_mock(
         tax_reports=[],
+        financial_inputs=_HAS_INPUTS,
         report_jobs=[_JOB],
     )
     with patch("app.routers.dashboard.anon_client", return_value=db):
@@ -265,7 +273,7 @@ def test_pending_with_queued_job_embeds_job_id(auth_client):
 
 def test_pending_poll_js_calls_status_endpoint(auth_client):
     """Poll JS references /jobs/${jobId}/status."""
-    db = _make_db_mock(tax_reports=[], report_jobs=[_JOB])
+    db = _make_db_mock(tax_reports=[], financial_inputs=_HAS_INPUTS, report_jobs=[_JOB])
     with patch("app.routers.dashboard.anon_client", return_value=db):
         resp = auth_client.get("/dashboard")
 
@@ -275,7 +283,7 @@ def test_pending_poll_js_calls_status_endpoint(auth_client):
 
 def test_pending_poll_js_redirects_on_complete(auth_client):
     """Poll JS redirects to /dashboard on status === 'complete'."""
-    db = _make_db_mock(tax_reports=[], report_jobs=[_JOB])
+    db = _make_db_mock(tax_reports=[], financial_inputs=_HAS_INPUTS, report_jobs=[_JOB])
     with patch("app.routers.dashboard.anon_client", return_value=db):
         resp = auth_client.get("/dashboard")
 
@@ -284,7 +292,7 @@ def test_pending_poll_js_redirects_on_complete(auth_client):
 
 def test_pending_failed_state_ui(auth_client):
     """Pending page contains the error-banner div for the failed state."""
-    db = _make_db_mock(tax_reports=[], report_jobs=[_JOB])
+    db = _make_db_mock(tax_reports=[], financial_inputs=_HAS_INPUTS, report_jobs=[_JOB])
     with patch("app.routers.dashboard.anon_client", return_value=db):
         resp = auth_client.get("/dashboard")
 
@@ -295,19 +303,29 @@ def test_pending_failed_state_ui(auth_client):
 
 
 def test_pending_no_job_no_poll_loop(auth_client):
-    """No report and no job → pending page with empty jobId in the script.
+    """No report, has data, but no job → pending page with empty jobId in the script.
 
     The template renders job_id as "" so `const jobId = "" || ...`.  The poll
     function checks `if (!jobId) return;` which exits immediately when jobId is
     falsy (no URL param either), so no poll loop fires.
     """
-    db = _make_db_mock(tax_reports=[], report_jobs=[])
+    db = _make_db_mock(tax_reports=[], financial_inputs=_HAS_INPUTS, report_jobs=[])
     with patch("app.routers.dashboard.anon_client", return_value=db):
         resp = auth_client.get("/dashboard")
 
     assert resp.status_code == 200
     # Template variable is empty → jobId renders as ""
     assert 'const jobId = "" ||' in resp.text
+
+
+def test_new_user_no_inputs_redirects_to_onboarding(auth_client):
+    """GET /dashboard for a brand-new user (no financial_inputs) → 302 to onboarding."""
+    db = _make_db_mock(tax_reports=[], financial_inputs=[])
+    with patch("app.routers.dashboard.anon_client", return_value=db):
+        resp = auth_client.get("/dashboard", follow_redirects=False)
+
+    assert resp.status_code == 302
+    assert resp.headers["location"] == "/onboarding/demographics"
 
 
 # ── Auth / redirect tests ────────────────────────────────────────────────────

@@ -33,6 +33,20 @@ async def dashboard(request: Request, settings: Settings = Depends(get_settings)
     )
 
     if not report_result.data:
+        # No completed report yet. Check if the user has ever submitted intake data.
+        # If not, they are a brand-new user → redirect to onboarding so they fill
+        # in their details before a report can be generated.
+        inputs_result = (
+            db.table("financial_inputs")
+            .select("id")
+            .eq("user_id", user.id)
+            .limit(1)
+            .execute()
+        )
+        if not inputs_result.data:
+            return RedirectResponse("/onboarding/demographics", status_code=302)
+
+        # User has submitted data but the report is still generating (or failed).
         # Look up the latest job so we can embed job_id in the template context,
         # so polling works even when the user navigates directly to /dashboard
         # without the ?job= URL parameter.
