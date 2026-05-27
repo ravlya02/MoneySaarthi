@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app.config import Settings, get_settings
+from app.db.supabase_client import service_client
 from app.dependencies import current_user
-from app.models.auth import SessionPayload
+from app.models.auth import RegisterPayload, SessionPayload
 from app.routers.templates import templates
 
 router = APIRouter(tags=["auth"])
@@ -24,6 +25,34 @@ async def login_page(request: Request, settings: Settings = Depends(get_settings
         "supabase_url": settings.supabase_url,
         "supabase_anon_key": settings.supabase_anon_key,
     })
+
+
+@router.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request, settings: Settings = Depends(get_settings)):
+    return templates.TemplateResponse(request=request, name="register.html", context={
+        "supabase_url": settings.supabase_url,
+        "supabase_anon_key": settings.supabase_anon_key,
+    })
+
+
+@router.post("/register", status_code=201)
+async def register(payload: RegisterPayload):
+    """Create a new user via the admin API with email already confirmed.
+
+    Uses the service_role key (server-side only — never reaches the browser).
+    email_confirm=True bypasses Supabase's email-verification gate entirely so
+    the user can sign in immediately after account creation.
+    user_metadata carries full_name for the on_auth_user_created trigger.
+    """
+    try:
+        service_client().auth.admin.create_user({
+            "email": payload.email,
+            "password": payload.password,
+            "email_confirm": True,
+            "user_metadata": {"full_name": payload.full_name},
+        })
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/auth/session", status_code=204)

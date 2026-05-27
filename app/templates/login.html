@@ -38,8 +38,7 @@
         </button>
 
         <p class="toggle-line">
-          <span id="toggle-text">Don't have an account?</span>
-          <a href="#" id="toggle-link" class="form-link">Sign Up</a>
+          Don't have an account? <a href="/register" class="form-link">Create one</a>
         </p>
       </form>
     </div>
@@ -52,7 +51,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
   const _sb = supabase.createClient("{{ supabase_url }}", "{{ supabase_anon_key }}");
-  let mode = "signin";
 
   const form      = document.getElementById("auth-form");
   const emailEl   = document.getElementById("email");
@@ -61,8 +59,6 @@
   const submitBtn = document.getElementById("submit-btn");
   const btnLabel  = document.getElementById("btn-label");
   const btnSpinner= document.getElementById("btn-spinner");
-  const toggleLink= document.getElementById("toggle-link");
-  const toggleText= document.getElementById("toggle-text");
 
   function showError(msg) {
     errorEl.textContent = msg;
@@ -75,53 +71,25 @@
     btnSpinner.hidden = !on;
   }
 
-  toggleLink.addEventListener("click", (e) => {
-    e.preventDefault();
-    clearError();
-    if (mode === "signin") {
-      mode = "signup";
-      btnLabel.textContent = "SIGN UP";
-      toggleText.textContent = "Already have an account?";
-      toggleLink.textContent = "Sign In";
-    } else {
-      mode = "signin";
-      btnLabel.textContent = "SIGN IN";
-      toggleText.textContent = "Don't have an account?";
-      toggleLink.textContent = "Sign Up";
-    }
-  });
-
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     clearError();
-    const email = emailEl.value.trim();
+    const email    = emailEl.value.trim();
     const password = passEl.value;
     if (!email || !password) { showError("Email and password are required."); return; }
 
     setLoading(true);
-    let result;
-    if (mode === "signin") {
-      result = await _sb.auth.signInWithPassword({ email, password });
-    } else {
-      result = await _sb.auth.signUp({ email, password });
-    }
+    const { data, error } = await _sb.auth.signInWithPassword({ email, password });
     setLoading(false);
 
-    const { data, error } = result;
     if (error) { showError(error.message); return; }
-
-    // For sign-up, Supabase may require email confirmation.
-    if (mode === "signup" && !data.session) {
-      showError("Account created — check your email to confirm before signing in.");
-      return;
-    }
 
     const session = data.session;
     await fetch("/auth/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        access_token: session.access_token,
+        access_token:  session.access_token,
         refresh_token: session.refresh_token,
       }),
     });
