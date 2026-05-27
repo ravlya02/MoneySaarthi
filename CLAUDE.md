@@ -71,12 +71,30 @@ Three cooperating parts feeding one assembled prompt:
   Savings/Investments → Insurance → Goals → Risk). Persist partial state server-side on each step
   transition so a refresh never loses a half-entered sheet. No SPA. (§D.2)
 
+## Auth architecture (server-side only)
+All authentication is **fully server-side** — no Supabase JS SDK in any template.
+
+- **`POST /register`** — admin API (`service_role` key) calls `admin.create_user({email_confirm: True})`.
+  Email verification is disabled; accounts are immediately active. Never passes credentials to the browser.
+- **`POST /auth/login`** — creates a fresh `supabase` client per request (avoids shared session state
+  from `lru_cache`d `anon_client`). Signs in with password server-side and sets an HttpOnly cookie.
+  Auto-heals legacy unconfirmed accounts: if Supabase returns "not confirmed", finds the user via
+  `admin.list_users()`, calls `admin.update_user_by_id(id, {email_confirm: True})`, then retries.
+- **`optional_user()`** — returns `CurrentUser | None`, never raises. Used on SSR pages to redirect
+  unauthenticated users without triggering a 401 JSON response.
+- **`current_user()`** — raises `HTTPException(401)`. Used only on JSON API endpoints (e.g. job status).
+- **`?next=` deep-link** — `_safe_next()` validates the param (must start with `/`, must not start
+  with `//`) before using it; prevents open-redirect attacks.
+- **`authenticated=True`** — must be passed explicitly in every protected `TemplateResponse` context.
+  `base.html` guards the nav bar with `{% if authenticated %}`.
+- **Anon key / service_role key** — neither key is ever injected into template HTML or client JS.
+
 ## Repo layout
 ```
 app/
   config.py              — pydantic-settings (env vars, assessment_year, debug flag)
   main.py                — FastAPI app; mounts /static; includes all routers
-  dependencies.py        — JWT verification → CurrentUser (user_id from token only)
+  dependencies.py        — current_user() raises 401; optional_user() returns None
   db/
     supabase_client.py   — anon_client() + service_client() (lru_cache singletons)
     schema.sql           — full DDL (all 12 tables + indexes + RLS enable)
@@ -84,7 +102,7 @@ app/
     triggers.sql         — updated_at trigger on profiles & report_jobs
     apply.py             — SQL-aware migration runner (loads .env, parses $$ blocks)
   models/
-    auth.py              — SessionPayload (access_token, refresh_token)
+    auth.py              — SessionPayload, RegisterPayload, LoginPayload
     intake.py            — Pydantic intake models: HouseholdMember, IncomeSource,
                            Expense, Liability, Holding, InsurancePolicy, Goal,
                            IntakeSubmission. All money fields are Decimal.
@@ -106,14 +124,18 @@ app/
   worker/jobs.py         — generate_report() background task (engine → AI → DB)
   charts/figures.py      — Plotly figure builders (scaffold)
   routers/
-    auth.py              — GET /login, POST /auth/session, POST /auth/logout, GET /
-    onboarding.py        — GET+POST /onboarding/{step}, POST /onboarding/submit
-    dashboard.py         — GET /dashboard, GET /jobs/{job_id}/status
+    auth.py              — GET /login, GET /register, POST /register, POST /auth/login,
+                           POST /auth/session, POST /auth/logout, GET /
+    onboarding.py        — GET /onboarding/{step} (optional_user redirect),
+                           POST /onboarding/submit (current_user)
+    dashboard.py         — GET /dashboard (optional_user redirect),
+                           GET /jobs/{job_id}/status (current_user, JSON 401)
     health.py            — GET /health
     templates.py         — Jinja2Templates singleton
   templates/
-    base.html            — CDN Plotly, nav, block content
-    login.html           — Supabase JS Auth, POSTs JWT to /auth/session
+    base.html            — CDN Plotly, nav ({% if authenticated %}), block content
+    login.html           — server-side only; fetch("/auth/login"); logged_out banner
+    register.html        — server-side only; fetch("/register") + fetch("/auth/login")
     dashboard.html       — report view (Plotly hydration wired up TODO)
     dashboard_pending.html — polling / "generating" state
     onboarding/
@@ -124,9 +146,15 @@ documents/
   Investment_analysis_and_portfolio_management.pdf — portfolio domain reference
 tests/
   test_tax.py            — 2 unit tests: sub-rebate → 0 tax; high income → tax > 0
-requirements.txt         — fastapi, uvicorn, jinja2, pydantic>=2, pydantic-settings,
-                           supabase, httpx, google-generativeai, qdrant-client,
-                           plotly, python-jose[cryptography], psycopg2-binary>=2.9
+  test_auth.py           — session cookie, logout, login page render, root redirect
+  test_registration.py   — 10 tests: GET /register render + security; POST /register
+                           admin API call, error handling, Pydantic validation
+  test_login_logout.py   — 10 tests: redirect-if-no-cookie, redirect-if-authed,
+                           ?next= deep link, open-redirect rejection, 401 on API endpoint
+requirements.txt         — fastapi, uvicorn, jinja2, pydantic[email]>=2,
+                           pydantic-settings, supabase, httpx, google-generativeai,
+                           qdrant-client, plotly, python-jose[cryptography],
+                           psycopg2-binary>=2.9
 ```
 
 ## Build / run / test
@@ -163,7 +191,11 @@ DEBUG=false
 
 ### ✅ Done
 - **Database:** Full schema (12 tables), RLS policies, triggers, SQL migration runner
-- **Auth:** Login page (Supabase JS), JWT verification, session cookie, logout
+- **Auth — session & logout:** JWT verification, HttpOnly session cookie, `POST /auth/logout` with `?logged_out=1` banner (Step 01/02)
+- **Auth — server-side login:** `POST /auth/login` — fresh client per request, HttpOnly cookie set server-side, auto-heals legacy unconfirmed accounts via admin API (Step 04)
+- **Auth — registration:** `GET /register` + `POST /register` — admin API with `email_confirm=True`; email verification disabled (Step 03)
+- **Auth — redirect guards:** `optional_user()` dependency; `GET /login` and `GET /register` redirect authenticated users to dashboard; all protected SSR routes redirect unauthenticated users to `/login?next=<path>` with open-redirect prevention (Step 04)
+- **Auth — no Supabase JS:** neither `login.html` nor `register.html` loads the Supabase JS SDK or exposes any key to the browser; all sign-in/sign-up is server-side (Steps 03–04)
 - **App scaffold:** FastAPI app, all routers wired, Jinja2 templates, static mount
 - **Config:** pydantic-settings loading from `.env`
 - **Supabase clients:** anon + service_role, correctly scoped
@@ -175,8 +207,9 @@ DEBUG=false
 - **Background worker:** generate_report() — engine → AI degrade path → DB writes
 - **AI subsystem:** All modules scaffolded (web_search, rag, gemini, prompts, validation, orchestrator)
 - **Worker DB writes:** tax_reports + investment_plans via service_role
-- **Dashboard routes:** dashboard + job status poll endpoint
-- **Onboarding routes:** step GET + final POST /submit with job enqueue
+- **Dashboard routes:** GET /dashboard (optional_user redirect, `authenticated=True`) + job status poll endpoint
+- **Onboarding routes:** GET /onboarding/{step} (optional_user redirect, `authenticated=True`) + POST /submit with job enqueue
+- **Test suite:** 33 tests across test_tax.py, test_auth.py, test_registration.py, test_login_logout.py — all green
 
 ### 🔲 TODO (next steps)
 - **Old-regime tax:** implement slabs + 80C/80D/HRA deductions in `compute_old_regime()`
@@ -188,5 +221,4 @@ DEBUG=false
 - **Plotly figures:** implement allocation + tax figure builders in `charts/figures.py`; wire into dashboard template
 - **Dashboard SSE/poll:** frontend JS to poll `/jobs/{job_id}/status` and refresh on complete
 - **RAG corpus:** ingest tax & portfolio PDFs into Qdrant collections
-- **User registration flow:** sign-up page (currently only login exists)
-- **Profile creation:** auto-create `profiles` row on first login (trigger or router)
+- **Profile creation:** auto-create `profiles` row on first login (DB trigger or post-login hook)

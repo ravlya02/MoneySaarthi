@@ -91,6 +91,15 @@ section { margin-block: 2rem; }
 }
 
 /* ── Auth form ────────────────────────────────────────────── */
+.auth-notice {
+  background: rgba(16, 185, 129, .15);
+  border: 1px solid #6ee7b7;
+  color: #6ee7b7;
+  border-radius: 6px;
+  padding: .6rem .9rem;
+  font-size: .875rem;
+  margin-bottom: 1rem;
+}
 .auth-error {
   background: rgba(220, 38, 38, .15);
   border: 1px solid var(--error);

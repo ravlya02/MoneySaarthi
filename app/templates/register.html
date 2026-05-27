@@ -58,9 +58,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-  const _sb = supabase.createClient("{{ supabase_url }}", "{{ supabase_anon_key }}");
 
   const form        = document.getElementById("register-form");
   const fullNameEl  = document.getElementById("full-name");
@@ -120,21 +118,21 @@
       return;
     }
 
-    // Step 2: sign in to obtain a session.
-    const { data, error: signInError } = await _sb.auth.signInWithPassword({ email, password });
-    setLoading(false);
-
-    if (signInError) { showError(signInError.message); return; }
-
-    // Step 3: store session cookie server-side, then enter the onboarding flow.
-    await fetch("/auth/session", {
+    // Step 2: sign in via server endpoint — sets HttpOnly cookie directly.
+    const signInResp = await fetch("/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        access_token:  data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      }),
+      body: JSON.stringify({ email, password }),
     });
+    setLoading(false);
+
+    if (!signInResp.ok) {
+      const body = await signInResp.json().catch(() => ({}));
+      showError(body.detail || "Account created but sign-in failed. Please go to Sign In.");
+      return;
+    }
+
+    // Cookie is set server-side — redirect to onboarding.
     window.location.href = "/onboarding/demographics";
   });
 </script>
