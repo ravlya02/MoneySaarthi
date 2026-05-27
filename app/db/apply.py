@@ -23,6 +23,17 @@ import os
 import sys
 from pathlib import Path
 
+# Load .env from the repo root automatically so DATABASE_URL doesn't have to be
+# exported manually in the shell. python-dotenv is already installed as a
+# transitive dependency of pydantic-settings.
+try:
+    from dotenv import load_dotenv
+    _env_file = Path(__file__).parents[2] / ".env"
+    if _env_file.exists():
+        load_dotenv(_env_file)
+except ImportError:
+    pass  # python-dotenv not available; rely on the shell environment
+
 SQL_DIR = Path(__file__).parent
 FILES = ["schema.sql", "policies.sql", "triggers.sql"]
 

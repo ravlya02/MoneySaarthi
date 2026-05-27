@@ -84,18 +84,26 @@ def test_apply_dry_run_output_is_nonempty():
     )
 
 
-def test_apply_exits_nonzero_without_database_url():
-    """Without DATABASE_URL and without --dry-run, apply.py should exit non-zero."""
+def test_apply_exits_nonzero_on_bad_database_url():
+    """An invalid DATABASE_URL (no live DB) should cause apply.py to exit non-zero.
+
+    apply.py loads DATABASE_URL from .env automatically (via python-dotenv), so
+    stripping it from the subprocess env is not sufficient to test the missing-URL
+    path. Instead we override with a syntactically valid but unreachable URL to
+    exercise the connection-error branch.
+    """
+    env = _env_without_database_url()
+    env["DATABASE_URL"] = "postgresql://invalid:wrong@localhost:9999/nonexistent"
     result = subprocess.run(
         [sys.executable, str(APPLY_SCRIPT)],
         capture_output=True,
         text=True,
-        env=_env_without_database_url(),
+        env=env,
     )
     assert result.returncode != 0, (
-        "apply.py should fail with exit code != 0 when DATABASE_URL is missing."
+        "apply.py should exit non-zero when the DATABASE_URL is unreachable.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
-    assert "DATABASE_URL" in result.stdout or "DATABASE_URL" in result.stderr
 
 
 # ---------------------------------------------------------------------------
