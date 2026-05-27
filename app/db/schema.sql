@@ -146,6 +146,22 @@ create table if not exists public.report_jobs (
     updated_at    timestamptz not null default now()
 );
 
+-- 8. MARKET_DATA_CACHE: Web-Search Agent result cache, keyed by (tool, params, date).
+--    Contains only public market data (fund returns, FD/PPF rates etc.) — no PII.
+--    No RLS intentionally: any authenticated read is fine; worker writes via service_role.
+create table if not exists public.market_data_cache (
+    id           uuid primary key default gen_random_uuid(),
+    tool         text not null,                    -- e.g. 'search_top_funds'
+    params       jsonb not null,                   -- tool call parameters (for cache key)
+    cache_date   date not null default current_date,
+    result       jsonb not null,                   -- scraped structured JSON facts
+    source_urls  text[],                           -- cited sources for dashboard display
+    fetched_at   timestamptz not null default now(),
+    unique (tool, params, cache_date)
+);
+create index if not exists idx_market_data_cache_date
+    on public.market_data_cache (cache_date);
+
 -- Indexes: user_id is an RLS filter on essentially every query.
 create index if not exists idx_household_members_user on public.household_members (user_id);
 create index if not exists idx_financial_inputs_user on public.financial_inputs (user_id);
