@@ -287,3 +287,214 @@ section { margin-block: 2rem; }
   margin: 2rem auto;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Dashboard — Edit Financial Info button */
+.btn-edit-info {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem 1.1rem;
+  border: 1.5px solid var(--blue, #1a56db);
+  color: var(--blue, #1a56db);
+  background: #fff;
+  border-radius: 6px;
+  font-size: .875rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.btn-edit-info:hover { background: var(--blue, #1a56db); color: #fff; }
+
+/* Required field asterisk */
+.req { color: #dc2626; margin-left: 2px; font-size: .85em; vertical-align: top; line-height: 1.4; }
+
+/* ── Onboarding multi-step form ──────────────────────────────────────────── */
+
+.onboarding-wrap {
+  max-width: 760px;
+  margin: 2rem auto;
+  padding: 0 1.5rem 3rem;
+}
+
+/* Progress bar */
+.onboarding-progress { margin-bottom: 2rem; }
+.progress-label {
+  font-size: .8rem;
+  color: #6b7280;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.progress-track {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  margin: .5rem 0 1rem;
+}
+.progress-fill {
+  height: 100%;
+  background: var(--blue, #1a56db);
+  border-radius: 3px;
+  transition: width .3s ease;
+}
+.step-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem .75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.step-item { font-size: .75rem; }
+.step-link { color: #9ca3af; text-decoration: none; }
+.step-item.done .step-link { color: var(--blue, #1a56db); }
+.step-item.active .step-link { color: #111827; font-weight: 700; pointer-events: none; }
+
+/* Step form card */
+.step-form {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 2rem;
+}
+.step-form h2 { margin-top: 0; font-size: 1.25rem; color: #111827; }
+.step-hint { color: #6b7280; font-size: .9rem; margin-top: -.5rem; margin-bottom: 1.5rem; }
+
+/* Override field-group inside the step form for light backgrounds */
+.step-form .field-group label { color: #374151; }
+.step-form .field-group input,
+.step-form .field-group select {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: .5rem .75rem;
+  font-size: .9rem;
+  color: #111827;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+.step-form .field-group input:focus,
+.step-form .field-group select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(26, 86, 219, .25);
+  border-color: var(--blue, #1a56db);
+}
+.field-group--checkbox { display: flex; align-items: center; gap: .5rem; }
+.field-group--checkbox label { display: flex; align-items: center; gap: .5rem; color: #374151; font-size: .9rem; }
+
+/* Repeating rows */
+.repeating-row {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 1rem 1rem .75rem;
+  margin-bottom: 1rem;
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+.repeating-row legend {
+  font-weight: 600;
+  font-size: .85rem;
+  color: #374151;
+  padding: 0 .25rem;
+}
+
+/* Add / Remove row buttons */
+.add-row-btn {
+  background: none;
+  border: 1px dashed var(--blue, #1a56db);
+  color: var(--blue, #1a56db);
+  padding: .4rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .85rem;
+  margin-bottom: 1.5rem;
+  display: inline-block;
+}
+.add-row-btn:hover { background: rgba(26, 86, 219, .05); }
+.remove-row-btn {
+  background: none;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  padding: .3rem .75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .8rem;
+  grid-column: 1 / -1;
+  justify-self: end;
+  margin-top: .25rem;
+}
+.remove-row-btn:hover { background: #fee2e2; }
+
+/* Error / warning banners in onboarding */
+.form-error-banner {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: .9rem;
+}
+.form-warning-banner {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  border-radius: 6px;
+  padding: .75rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: .9rem;
+}
+.form-error-banner ul,
+.form-warning-banner ul { margin: .4rem 0 0; padding-left: 1.25rem; }
+
+/* Form actions footer */
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+.btn-secondary {
+  padding: .65rem 1.25rem;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 6px;
+  font-size: .9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn-secondary:hover { background: #f9fafb; }
+
+/* Risk profile radio cards */
+.risk-options { display: flex; flex-direction: column; gap: 1rem; margin: 1.5rem 0; }
+.risk-option {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.risk-option:has(input:checked) {
+  border-color: var(--blue, #1a56db);
+  background: rgba(26, 86, 219, .03);
+}
+.risk-option input[type="radio"] { margin-top: .2rem; accent-color: var(--blue, #1a56db); flex-shrink: 0; }
+.risk-option-label { font-weight: 600; color: #111827; margin-bottom: .25rem; }
+.risk-option-desc { font-size: .85rem; color: #6b7280; line-height: 1.5; }
+
+@media (max-width: 640px) {
+  .repeating-row { grid-template-columns: 1fr; }
+  .form-actions { flex-direction: column-reverse; align-items: stretch; }
+  .btn-primary, .btn-secondary { width: 100%; text-align: center; }
+}

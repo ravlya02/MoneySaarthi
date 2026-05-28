@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}MoneySaarthi — Risk Profile{% endblock %}
+{% block content %}
+<div class="onboarding-wrap">
+
+  <nav class="onboarding-progress" aria-label="Form progress">
+    <span class="progress-label">Step {{ step_index }} of {{ total_steps }}</span>
+    <div class="progress-track">
+      <div class="progress-fill" style="width: {{ (step_index / total_steps * 100)|int }}%;"></div>
+    </div>
+    <ol class="step-list">
+      {% for s in steps %}
+      <li class="step-item {% if s == step %}active{% elif loop.index < step_index %}done{% endif %}">
+        <a href="/onboarding/{{ s }}" class="step-link">{{ s|capitalize }}</a>
+      </li>
+      {% endfor %}
+    </ol>
+  </nav>
+
+  {% if errors %}
+  <div class="form-error-banner" role="alert">
+    <strong>Please fix the following:</strong>
+    <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if warnings %}
+  <div class="form-warning-banner" role="alert">
+    <strong>Data quality notice — your report will still be generated:</strong>
+    <ul>{% for w in warnings %}<li>{{ w }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/onboarding/{{ step }}" class="step-form">
+    <h2>Risk Profile</h2>
+    <p class="step-hint">Choose the investment approach that best reflects your comfort with market fluctuations. This shapes the asset allocation target in your report. <span class="req">*</span> Selection required.</p>
+
+    {% set saved_risk = draft.get('risk', {}).get('risk_appetite', '') %}
+
+    <div class="risk-options">
+
+      <label class="risk-option">
+        <input type="radio" name="risk_appetite" value="Conservative"
+               {% if saved_risk == 'Conservative' %}checked{% endif %} required>
+        <div>
+          <div class="risk-option-label">Conservative</div>
+          <div class="risk-option-desc">
+            Capital preservation is the priority. Lower volatility; higher allocation to Debt, FD,
+            PPF, and short-term instruments. Suitable for investors nearing a major goal or with
+            limited risk tolerance.
+          </div>
+        </div>
+      </label>
+
+      <label class="risk-option">
+        <input type="radio" name="risk_appetite" value="Moderate"
+               {% if saved_risk == 'Moderate' %}checked{% endif %}>
+        <div>
+          <div class="risk-option-label">Moderate</div>
+          <div class="risk-option-desc">
+            Balanced approach — a mix of equity growth and debt stability. Suitable for most
+            households with a 5–15 year investment horizon and average market-volatility tolerance.
+          </div>
+        </div>
+      </label>
+
+      <label class="risk-option">
+        <input type="radio" name="risk_appetite" value="Aggressive"
+               {% if saved_risk == 'Aggressive' %}checked{% endif %}>
+        <div>
+          <div class="risk-option-label">Aggressive</div>
+          <div class="risk-option-desc">
+            Maximum long-term growth. Higher equity allocation including mid- and small-cap exposure.
+            Suitable for younger investors with a 10+ year horizon who can absorb short-term
+            drawdowns.
+          </div>
+        </div>
+      </label>
+
+    </div>
+
+    <div class="form-actions">
+      {% if prev_step %}<a href="/onboarding/{{ prev_step }}" class="btn-secondary">Back</a>{% endif %}
+      <button type="submit" class="btn-primary">Generate Report</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

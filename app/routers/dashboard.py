@@ -23,6 +23,12 @@ async def dashboard(request: Request, settings: Settings = Depends(get_settings)
         return RedirectResponse("/login?next=/dashboard", status_code=302)
 
     db = anon_client()
+    token = request.cookies.get("access_token", "")
+    if token:
+        # Directly set user JWT on the PostgREST client so RLS resolves auth.uid()
+        # correctly.  Do NOT use db.auth.set_session() — it fires an auth event that
+        # resets _postgrest to a new anon-key-only instance.
+        db.postgrest.auth(token)
     report_result = (
         db.table("tax_reports")
         .select("*")
@@ -33,6 +39,20 @@ async def dashboard(request: Request, settings: Settings = Depends(get_settings)
     )
 
     if not report_result.data:
+        # No completed report yet. Check if the user has ever submitted intake data.
+        # If not, they are a brand-new user → redirect to onboarding so they fill
+        # in their details before a report can be generated.
+        inputs_result = (
+            db.table("financial_inputs")
+            .select("id")
+            .eq("user_id", user.id)
+            .limit(1)
+            .execute()
+        )
+        if not inputs_result.data:
+            return RedirectResponse("/onboarding/demographics", status_code=302)
+
+        # User has submitted data but the report is still generating (or failed).
         # Look up the latest job so we can embed job_id in the template context,
         # so polling works even when the user navigates directly to /dashboard
         # without the ?job= URL parameter.
@@ -58,7 +78,7 @@ async def dashboard(request: Request, settings: Settings = Depends(get_settings)
         db.table("investment_plans")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", desc=True)
+        .order("generated_at", desc=True)
         .limit(1)
         .execute()
     )
@@ -99,9 +119,12 @@ async def dashboard(request: Request, settings: Settings = Depends(get_settings)
 
 
 @router.get("/jobs/{job_id}/status")
-async def job_status(job_id: str, user: CurrentUser = Depends(current_user)):
+async def job_status(job_id: str, request: Request, user: CurrentUser = Depends(current_user)):
     # JSON endpoint — 401 is the correct response here, not a redirect.
     db = anon_client()
+    token = request.cookies.get("access_token", "")
+    if token:
+        db.postgrest.auth(token)
     row = (
         db.table("report_jobs")
         .select("status,error_detail")
