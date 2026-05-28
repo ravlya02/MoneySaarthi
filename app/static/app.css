@@ -288,6 +288,25 @@ section { margin-block: 2rem; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Dashboard — Edit Financial Info button */
+.btn-edit-info {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem 1.1rem;
+  border: 1.5px solid var(--blue, #1a56db);
+  color: var(--blue, #1a56db);
+  background: #fff;
+  border-radius: 6px;
+  font-size: .875rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.btn-edit-info:hover { background: var(--blue, #1a56db); color: #fff; }
+
 /* Required field asterisk */
 .req { color: #dc2626; margin-left: 2px; font-size: .85em; vertical-align: top; line-height: 1.4; }
 

@@ -155,6 +155,57 @@ def _delete_draft(db, user_id: str) -> None:
     db.table("onboarding_drafts").delete().eq("user_id", user_id).execute()
 
 
+def _draft_from_raw_payload(payload: dict) -> dict:
+    """Convert a financial_inputs.raw_payload snapshot to the onboarding draft format.
+
+    ``raw_payload`` is the JSON-serialised ``IntakeSubmission`` stored when the
+    user last submitted the form.  The draft format used by each step template
+    nests each section under its step key, e.g. ``{"income": {"incomes": [...]}}``.
+
+    Decimal values in the payload come back from Supabase JSONB as floats; that
+    is fine because HTML ``<input type="number">`` renders them without the
+    trailing ``.0`` for whole numbers.
+    """
+    return {
+        "demographics": {"members": payload.get("members", [])},
+        "income":       {"incomes": payload.get("incomes", [])},
+        "expenses":     {"expenses": payload.get("expenses", [])},
+        "loans":        {"liabilities": payload.get("liabilities", [])},
+        "investments":  {"holdings": payload.get("holdings", [])},
+        "insurance":    {"insurance": payload.get("insurance", [])},
+        "goals":        {"goals": payload.get("goals", [])},
+        "risk":         {"risk_appetite": payload.get("risk_appetite", "")},
+    }
+
+
+def _seed_draft_from_financial_inputs(db, user_id: str) -> dict:
+    """Load the latest financial_inputs snapshot and seed an onboarding_drafts row.
+
+    Called when a user navigates to /onboarding/* with no active draft (i.e. they
+    are editing previously submitted data).  Returns the seed draft dict, or {}
+    if no prior submission exists.
+    """
+    result = (
+        db.table("financial_inputs")
+        .select("raw_payload")
+        .eq("user_id", user_id)
+        .order("version", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        return {}
+    raw = result.data[0].get("raw_payload") or {}
+    draft = _draft_from_raw_payload(raw)
+    # Persist as a single-shot upsert so Back/Forward between steps works without
+    # hitting financial_inputs again on every GET request.
+    db.table("onboarding_drafts").upsert(
+        {"user_id": user_id, "draft": draft},
+        on_conflict="user_id",
+    ).execute()
+    return draft
+
+
 # ── Submission helpers ───────────────────────────────────────────────────────
 
 def _next_version(db, user_id: str) -> int:
@@ -388,6 +439,12 @@ async def step_page(
         db.postgrest.auth(token)
 
     draft = _load_draft(db, user.id)
+    if not draft:
+        # No active draft — user may be editing previously submitted data.
+        # Seed the draft from the latest financial_inputs snapshot so all
+        # 8 steps come up pre-populated (no-op if they are a brand-new user).
+        draft = _seed_draft_from_financial_inputs(db, user.id)
+
     return templates.TemplateResponse(
         request=request,
         name=f"onboarding/{step}.html",
