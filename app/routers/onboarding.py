@@ -229,6 +229,19 @@ def _fan_out(db, input_id: str, user_id: str, intake: IntakeSubmission) -> None:
     All money fields use str(Decimal) so PostgreSQL numeric columns receive
     exact string representations — no float rounding. (§E.2)
     """
+    if intake.members:
+        db.table("household_members").insert([
+            {
+                "user_id": user_id,
+                "member_role": m.member_role,
+                "display_name": m.display_name,
+                "age": str(m.age) if m.age is not None else None,
+                "studies_in_class": m.studies_in_class,
+                "financially_dependent": m.financially_dependent,
+            }
+            for m in intake.members
+        ]).execute()
+
     if intake.incomes:
         db.table("income_sources").insert([
             {
@@ -311,7 +324,20 @@ async def _do_submit(
     user_id: str,
     intake: IntakeSubmission,
 ) -> RedirectResponse:
-    """Core submit logic: insert financial_inputs, fan out, enqueue job, delete draft."""
+    """Core submit logic: insert financial_inputs, fan out, enqueue job, delete draft.
+
+    Old financial_inputs rows (and their cascade-linked normalized rows in
+    income_sources, expenses, liabilities, holdings, insurance_policies, goals)
+    are deleted before inserting the new version.  The report always reflects
+    the latest submission and historical normalized rows serve no active purpose
+    in the current MVP, so we keep the DB tidy instead of accumulating versions.
+    """
+    # Delete previous versions — ON DELETE CASCADE cleans all normalized tables
+    # (income_sources, expenses, liabilities, holdings, insurance_policies, goals).
+    db.table("financial_inputs").delete().eq("user_id", user_id).execute()
+    # household_members has no input_id FK so it must be deleted separately.
+    db.table("household_members").delete().eq("user_id", user_id).execute()
+
     version = _next_version(db, user_id)
     inserted = db.table("financial_inputs").insert({
         "user_id": user_id,
