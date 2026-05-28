@@ -23,6 +23,12 @@ async def dashboard(request: Request, settings: Settings = Depends(get_settings)
         return RedirectResponse("/login?next=/dashboard", status_code=302)
 
     db = anon_client()
+    token = request.cookies.get("access_token", "")
+    if token:
+        # Directly set user JWT on the PostgREST client so RLS resolves auth.uid()
+        # correctly.  Do NOT use db.auth.set_session() — it fires an auth event that
+        # resets _postgrest to a new anon-key-only instance.
+        db.postgrest.auth(token)
     report_result = (
         db.table("tax_reports")
         .select("*")
@@ -113,9 +119,12 @@ async def dashboard(request: Request, settings: Settings = Depends(get_settings)
 
 
 @router.get("/jobs/{job_id}/status")
-async def job_status(job_id: str, user: CurrentUser = Depends(current_user)):
+async def job_status(job_id: str, request: Request, user: CurrentUser = Depends(current_user)):
     # JSON endpoint — 401 is the correct response here, not a redirect.
     db = anon_client()
+    token = request.cookies.get("access_token", "")
+    if token:
+        db.postgrest.auth(token)
     row = (
         db.table("report_jobs")
         .select("status,error_detail")

@@ -81,6 +81,21 @@ def _parse_indexed(form_data, prefix: str) -> list[dict]:
     return result
 
 
+def _strip_empty_numerics(rows: list[dict], fields: list[str]) -> list[dict]:
+    """Remove empty-string values for optional numeric fields.
+
+    When an HTML number input is left blank the browser sends an empty string.
+    Pydantic fails to convert ``""`` to ``Decimal``/``int``.  Stripping the key
+    from the row dict lets Pydantic use the field's declared default instead.
+    Only genuinely optional fields (those with a default) should be listed here.
+    """
+    for row in rows:
+        for f in fields:
+            if isinstance(row.get(f), str) and row[f].strip() == "":
+                row.pop(f)
+    return rows
+
+
 def _parse_step_form(step: str, form_data) -> dict:
     """Extract a raw dict from form_data appropriate for the given step model."""
     if step == "demographics":
@@ -90,13 +105,21 @@ def _parse_step_form(step: str, form_data) -> dict:
     if step == "expenses":
         return {"expenses": _parse_indexed(form_data, "expenses")}
     if step == "loans":
-        return {"liabilities": _parse_indexed(form_data, "liabilities")}
+        rows = _parse_indexed(form_data, "liabilities")
+        _strip_empty_numerics(rows, ["emi", "pending_amount", "interest_rate", "duration_months"])
+        return {"liabilities": rows}
     if step == "investments":
-        return {"holdings": _parse_indexed(form_data, "holdings")}
+        rows = _parse_indexed(form_data, "holdings")
+        _strip_empty_numerics(rows, ["sip_monthly", "invested_amount", "current_corpus", "interest_rate"])
+        return {"holdings": rows}
     if step == "insurance":
-        return {"insurance": _parse_indexed(form_data, "insurance")}
+        rows = _parse_indexed(form_data, "insurance")
+        _strip_empty_numerics(rows, ["premium", "maturity_amount"])
+        return {"insurance": rows}
     if step == "goals":
-        return {"goals": _parse_indexed(form_data, "goals")}
+        rows = _parse_indexed(form_data, "goals")
+        _strip_empty_numerics(rows, ["duration_years"])
+        return {"goals": rows}
     if step == "risk":
         return {"risk_appetite": form_data.get("risk_appetite", "")}
     return {}
@@ -359,10 +382,10 @@ async def step_page(
     token = request.cookies.get("access_token", "")
     db = anon_client()
     if token:
-        try:
-            db.auth.set_session(access_token=token, refresh_token="")
-        except Exception:
-            pass  # session set is best-effort; RLS applies in production
+        # Directly set user JWT on PostgREST so RLS resolves auth.uid() correctly.
+        # Avoid db.auth.set_session() — it fires an auth event resetting _postgrest
+        # to a fresh anon-key-only instance, dropping the JWT before the query runs.
+        db.postgrest.auth(token)
 
     draft = _load_draft(db, user.id)
     return templates.TemplateResponse(
@@ -405,10 +428,7 @@ async def step_post(
     token = request.cookies.get("access_token", "")
     db = anon_client()
     if token:
-        try:
-            db.auth.set_session(access_token=token, refresh_token="")
-        except Exception:
-            pass
+        db.postgrest.auth(token)
 
     form_data = await request.form()
     draft = _load_draft(db, user.id)

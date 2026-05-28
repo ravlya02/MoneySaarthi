@@ -26,7 +26,7 @@
 
   <form method="post" action="/onboarding/{{ step }}" class="step-form">
     <h2>Monthly Expenses</h2>
-    <p class="step-hint">Enter your regular monthly outgoings by category.</p>
+    <p class="step-hint">Enter your regular monthly outgoings by category. <span class="req">*</span> Required fields.</p>
 
     <div id="rows-container">
       {% set expense_list = draft.get('expenses', {}).get('expenses', []) %}
@@ -36,7 +36,7 @@
         <legend>Expense {{ i + 1 }}</legend>
 
         <div class="field-group">
-          <label>Category</label>
+          <label>Category <span class="req">*</span></label>
           <select name="expenses[{{ i }}][category]" required>
             <option value="">Select or type below…</option>
             {% for opt in ['Household','Hospital / Medical','School / Education','Discretionary','Guest / Entertainment','Business','Other'] %}
@@ -46,7 +46,7 @@
         </div>
 
         <div class="field-group">
-          <label>Monthly Amount (₹)</label>
+          <label>Monthly Amount (₹) <span class="req">*</span></label>
           <input type="number" name="expenses[{{ i }}][monthly_amount]"
                  value="{{ exp.get('monthly_amount', '') }}" min="0" step="1" required
                  placeholder="e.g. 30000">
@@ -61,7 +61,7 @@
       <fieldset class="repeating-row">
         <legend>Expense __num__</legend>
         <div class="field-group">
-          <label>Category</label>
+          <label>Category <span class="req">*</span></label>
           <select name="expenses[__idx__][category]" required>
             <option value="">Select or type below…</option>
             <option value="Household">Household</option>
@@ -76,6 +76,7 @@
         <div class="field-group">
           <label>Monthly Amount (₹)</label>
           <input type="number" name="expenses[__idx__][monthly_amount]" min="0" step="1" required placeholder="e.g. 30000">
+
         </div>
         <button type="button" class="remove-row-btn">Remove</button>
       </fieldset>

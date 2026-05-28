@@ -288,6 +288,9 @@ section { margin-block: 2rem; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Required field asterisk */
+.req { color: #dc2626; margin-left: 2px; font-size: .85em; vertical-align: top; line-height: 1.4; }
+
 /* ── Onboarding multi-step form ──────────────────────────────────────────── */
 
 .onboarding-wrap {

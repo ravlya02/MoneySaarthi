@@ -26,7 +26,7 @@
 
   <form method="post" action="/onboarding/{{ step }}" class="step-form">
     <h2>Insurance Policies</h2>
-    <p class="step-hint">Include all life, health, corporate, and investment-linked insurance policies.</p>
+    <p class="step-hint">Include all life, health, corporate, and investment-linked insurance policies. <span class="req">*</span> Required fields.</p>
 
     <div id="rows-container">
       {% set policies = draft.get('insurance', {}).get('insurance', []) %}
@@ -36,7 +36,7 @@
         <legend>Policy {{ i + 1 }}</legend>
 
         <div class="field-group">
-          <label>Policy Type</label>
+          <label>Policy Type <span class="req">*</span></label>
           <select name="insurance[{{ i }}][policy_type]" required>
             <option value="">Select…</option>
             {% for opt in ['Life','Health','Corporate Life','Corporate Health'] %}
@@ -46,14 +46,14 @@
         </div>
 
         <div class="field-group">
-          <label>Product Name</label>
+          <label>Product Name <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="text" name="insurance[{{ i }}][product_name]"
                  value="{{ p.get('product_name', '') }}"
                  placeholder="e.g. LIC Jeevan Anand">
         </div>
 
         <div class="field-group">
-          <label>Structure</label>
+          <label>Structure <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional — not applicable for health</em></label>
           <select name="insurance[{{ i }}][structure]">
             <option value="">Select…</option>
             {% for opt in ['Term','ULIP','Endowment'] %}
@@ -66,21 +66,21 @@
           <label>Insured</label>
           <select name="insurance[{{ i }}][insured]">
             <option value="">Select…</option>
-            {% for opt in ['Sir','Mam'] %}
+            {% for opt in ['Sir','Mam','Father','Mother','Family','Family and Parents'] %}
             <option value="{{ opt }}" {% if p.get('insured') == opt %}selected{% endif %}>{{ opt }}</option>
             {% endfor %}
           </select>
         </div>
 
         <div class="field-group">
-          <label>Premium Amount (₹)</label>
+          <label>Premium Amount (₹) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="insurance[{{ i }}][premium]"
                  value="{{ p.get('premium', '') }}" min="0" step="1"
                  placeholder="e.g. 25000">
         </div>
 
         <div class="field-group">
-          <label>Premium Frequency</label>
+          <label>Premium Frequency <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <select name="insurance[{{ i }}][premium_frequency]">
             <option value="">Select…</option>
             {% for opt in ['Monthly','Quarterly','Half-Yearly','Annually'] %}
@@ -90,16 +90,16 @@
         </div>
 
         <div class="field-group">
-          <label>Policy End Date</label>
+          <label>Policy End Date <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="date" name="insurance[{{ i }}][policy_end_date]"
                  value="{{ p.get('policy_end_date', '') }}">
         </div>
 
         <div class="field-group">
-          <label>Maturity Amount (₹)</label>
+          <label>Maturity Amount (₹) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional — not applicable for Term / Health</em></label>
           <input type="number" name="insurance[{{ i }}][maturity_amount]"
                  value="{{ p.get('maturity_amount', '') }}" min="0" step="1"
-                 placeholder="0 for term plans">
+                 placeholder="Leave blank if none">
         </div>
 
         <button type="button" class="remove-row-btn">Remove</button>
@@ -111,7 +111,7 @@
       <fieldset class="repeating-row">
         <legend>Policy __num__</legend>
         <div class="field-group">
-          <label>Policy Type</label>
+          <label>Policy Type <span class="req">*</span></label>
           <select name="insurance[__idx__][policy_type]" required>
             <option value="">Select…</option>
             <option value="Life">Life</option>
@@ -121,11 +121,11 @@
           </select>
         </div>
         <div class="field-group">
-          <label>Product Name</label>
+          <label>Product Name <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="text" name="insurance[__idx__][product_name]" placeholder="e.g. LIC Jeevan Anand">
         </div>
         <div class="field-group">
-          <label>Structure</label>
+          <label>Structure <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional — not applicable for health</em></label>
           <select name="insurance[__idx__][structure]">
             <option value="">Select…</option>
             <option value="Term">Term</option>
@@ -139,14 +139,18 @@
             <option value="">Select…</option>
             <option value="Sir">Sir</option>
             <option value="Mam">Mam</option>
+            <option value="Father">Father</option>
+            <option value="Mother">Mother</option>
+            <option value="Family">Family</option>
+            <option value="Family and Parents">Family and Parents</option>
           </select>
         </div>
         <div class="field-group">
-          <label>Premium Amount (₹)</label>
+          <label>Premium Amount (₹) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="insurance[__idx__][premium]" min="0" step="1" placeholder="e.g. 25000">
         </div>
         <div class="field-group">
-          <label>Premium Frequency</label>
+          <label>Premium Frequency <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <select name="insurance[__idx__][premium_frequency]">
             <option value="">Select…</option>
             <option value="Monthly">Monthly</option>
@@ -156,12 +160,12 @@
           </select>
         </div>
         <div class="field-group">
-          <label>Policy End Date</label>
+          <label>Policy End Date <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="date" name="insurance[__idx__][policy_end_date]">
         </div>
         <div class="field-group">
-          <label>Maturity Amount (₹)</label>
-          <input type="number" name="insurance[__idx__][maturity_amount]" min="0" step="1" placeholder="0 for term plans">
+          <label>Maturity Amount (₹) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional — not applicable for Term / Health</em></label>
+          <input type="number" name="insurance[__idx__][maturity_amount]" min="0" step="1" placeholder="Leave blank if none">
         </div>
         <button type="button" class="remove-row-btn">Remove</button>
       </fieldset>

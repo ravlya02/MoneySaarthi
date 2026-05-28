@@ -38,7 +38,7 @@
         <legend>Member {{ i + 1 }}</legend>
 
         <div class="field-group">
-          <label for="role_{{ i }}">Role</label>
+          <label for="role_{{ i }}">Role <span class="req">*</span></label>
           <select id="role_{{ i }}" name="members[{{ i }}][member_role]" required>
             <option value="">Select…</option>
             {% for opt in ['Sir','Mam','Child','Parent','Other'] %}
@@ -85,7 +85,7 @@
         <legend>Member __num__</legend>
 
         <div class="field-group">
-          <label>Role</label>
+          <label>Role <span class="req">*</span></label>
           <select name="members[__idx__][member_role]" required>
             <option value="">Select…</option>
             <option value="Sir">Sir</option>

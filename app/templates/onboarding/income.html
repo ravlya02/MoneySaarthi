@@ -26,7 +26,7 @@
 
   <form method="post" action="/onboarding/{{ step }}" class="step-form">
     <h2>Income Sources</h2>
-    <p class="step-hint">Enter all monthly income for both earners. Add one row per source.</p>
+    <p class="step-hint">Enter all monthly income for each earner. Add one row per source. <span class="req">*</span> Required fields.</p>
 
     <div id="rows-container">
       {% set incomes = draft.get('income', {}).get('incomes', []) %}
@@ -36,17 +36,17 @@
         <legend>Income {{ i + 1 }}</legend>
 
         <div class="field-group">
-          <label>Earner</label>
+          <label>Earner <span class="req">*</span></label>
           <select name="incomes[{{ i }}][earner]" required>
             <option value="">Select…</option>
-            {% for opt in ['Sir','Mam'] %}
+            {% for opt in ['Sir','Mam','Father','Mother'] %}
             <option value="{{ opt }}" {% if inc.get('earner') == opt %}selected{% endif %}>{{ opt }}</option>
             {% endfor %}
           </select>
         </div>
 
         <div class="field-group">
-          <label>Source Type</label>
+          <label>Source Type <span class="req">*</span></label>
           <select name="incomes[{{ i }}][source_type]" required>
             <option value="">Select…</option>
             {% for opt in ['Salary','Business','Rental','FD Interest','Other'] %}
@@ -56,7 +56,7 @@
         </div>
 
         <div class="field-group">
-          <label>Monthly Amount (₹)</label>
+          <label>Monthly Amount (₹) <span class="req">*</span></label>
           <input type="number" name="incomes[{{ i }}][monthly_amount]"
                  value="{{ inc.get('monthly_amount', '') }}" min="0" step="1" required
                  placeholder="e.g. 150000">
@@ -71,15 +71,17 @@
       <fieldset class="repeating-row">
         <legend>Income __num__</legend>
         <div class="field-group">
-          <label>Earner</label>
+          <label>Earner <span class="req">*</span></label>
           <select name="incomes[__idx__][earner]" required>
             <option value="">Select…</option>
             <option value="Sir">Sir</option>
             <option value="Mam">Mam</option>
+            <option value="Father">Father</option>
+            <option value="Mother">Mother</option>
           </select>
         </div>
         <div class="field-group">
-          <label>Source Type</label>
+          <label>Source Type <span class="req">*</span></label>
           <select name="incomes[__idx__][source_type]" required>
             <option value="">Select…</option>
             <option value="Salary">Salary</option>
@@ -90,7 +92,7 @@
           </select>
         </div>
         <div class="field-group">
-          <label>Monthly Amount (₹)</label>
+          <label>Monthly Amount (₹) <span class="req">*</span></label>
           <input type="number" name="incomes[__idx__][monthly_amount]" min="0" step="1" required placeholder="e.g. 150000">
         </div>
         <button type="button" class="remove-row-btn">Remove</button>

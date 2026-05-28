@@ -26,7 +26,7 @@
 
   <form method="post" action="/onboarding/{{ step }}" class="step-form">
     <h2>Loans &amp; Liabilities</h2>
-    <p class="step-hint">Include home loans, personal loans, car loans, and any other EMIs. Leave blank if you have no loans.</p>
+    <p class="step-hint">Include home loans, personal loans, car loans, and any other EMIs. Leave blank if you have no loans. <span class="req">*</span> Required fields.</p>
 
     <div id="rows-container">
       {% set loans = draft.get('loans', {}).get('liabilities', []) %}
@@ -36,7 +36,7 @@
         <legend>Loan {{ i + 1 }}</legend>
 
         <div class="field-group">
-          <label>Loan Type</label>
+          <label>Loan Type <span class="req">*</span></label>
           <input type="text" name="liabilities[{{ i }}][loan_type]"
                  value="{{ loan.get('loan_type', '') }}"
                  placeholder="e.g. Home Loan" required>
@@ -46,7 +46,7 @@
           <label>Owner</label>
           <select name="liabilities[{{ i }}][owner]">
             <option value="">Select…</option>
-            {% for opt in ['Sir','Mam','Joint'] %}
+            {% for opt in ['Sir','Mam','Joint','Father','Mother'] %}
             <option value="{{ opt }}" {% if loan.get('owner') == opt %}selected{% endif %}>{{ opt }}</option>
             {% endfor %}
           </select>
@@ -67,14 +67,14 @@
         </div>
 
         <div class="field-group">
-          <label>Interest Rate (%)</label>
+          <label>Interest Rate (%) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="liabilities[{{ i }}][interest_rate]"
                  value="{{ loan.get('interest_rate', '') }}" min="0" max="30" step="0.01"
                  placeholder="e.g. 8.50">
         </div>
 
         <div class="field-group">
-          <label>Remaining Duration (months)</label>
+          <label>Remaining Duration (months) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="liabilities[{{ i }}][duration_months]"
                  value="{{ loan.get('duration_months', '') }}" min="0" step="1"
                  placeholder="e.g. 180">
@@ -89,7 +89,7 @@
       <fieldset class="repeating-row">
         <legend>Loan __num__</legend>
         <div class="field-group">
-          <label>Loan Type</label>
+          <label>Loan Type <span class="req">*</span></label>
           <input type="text" name="liabilities[__idx__][loan_type]" placeholder="e.g. Home Loan" required>
         </div>
         <div class="field-group">
@@ -99,6 +99,8 @@
             <option value="Sir">Sir</option>
             <option value="Mam">Mam</option>
             <option value="Joint">Joint</option>
+            <option value="Father">Father</option>
+            <option value="Mother">Mother</option>
           </select>
         </div>
         <div class="field-group">
@@ -110,11 +112,11 @@
           <input type="number" name="liabilities[__idx__][pending_amount]" min="0" step="1" placeholder="e.g. 3500000">
         </div>
         <div class="field-group">
-          <label>Interest Rate (%)</label>
+          <label>Interest Rate (%) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="liabilities[__idx__][interest_rate]" min="0" max="30" step="0.01" placeholder="e.g. 8.50">
         </div>
         <div class="field-group">
-          <label>Remaining Duration (months)</label>
+          <label>Remaining Duration (months) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="liabilities[__idx__][duration_months]" min="0" step="1" placeholder="e.g. 180">
         </div>
         <button type="button" class="remove-row-btn">Remove</button>

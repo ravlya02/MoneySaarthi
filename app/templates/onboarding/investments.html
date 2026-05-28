@@ -26,7 +26,7 @@
 
   <form method="post" action="/onboarding/{{ step }}" class="step-form">
     <h2>Savings &amp; Investments</h2>
-    <p class="step-hint">Include mutual funds, shares, NPS, PF, PPF, FD, RD, Sukanya, gold, property, and any other holdings.</p>
+    <p class="step-hint">Include mutual funds, shares, NPS, PF, PPF, FD, RD, Sukanya, gold, property, and any other holdings. <span class="req">*</span> Required fields.</p>
 
     <div id="rows-container">
       {% set holdings = draft.get('investments', {}).get('holdings', []) %}
@@ -36,7 +36,7 @@
         <legend>Holding {{ i + 1 }}</legend>
 
         <div class="field-group">
-          <label>Asset Class</label>
+          <label>Asset Class <span class="req">*</span></label>
           <select name="holdings[{{ i }}][asset_class]" required>
             <option value="">Select…</option>
             {% for opt in ['Equity','Debt','RealEstate','Metals','Cash'] %}
@@ -46,7 +46,7 @@
         </div>
 
         <div class="field-group">
-          <label>Instrument / Fund Name</label>
+          <label>Instrument / Fund Name <span class="req">*</span></label>
           <input type="text" name="holdings[{{ i }}][instrument]"
                  value="{{ h.get('instrument', '') }}"
                  placeholder="e.g. Axis Small Cap Fund" required>
@@ -56,14 +56,14 @@
           <label>Owner</label>
           <select name="holdings[{{ i }}][owner]">
             <option value="">Select…</option>
-            {% for opt in ['Sir','Mam'] %}
+            {% for opt in ['Sir','Mam','Father','Mother'] %}
             <option value="{{ opt }}" {% if h.get('owner') == opt %}selected{% endif %}>{{ opt }}</option>
             {% endfor %}
           </select>
         </div>
 
         <div class="field-group">
-          <label>Monthly SIP (₹)</label>
+          <label>Monthly SIP (₹) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional — leave blank for lump-sum only</em></label>
           <input type="number" name="holdings[{{ i }}][sip_monthly]"
                  value="{{ h.get('sip_monthly', '') }}" min="0" step="1"
                  placeholder="0">
@@ -84,7 +84,7 @@
         </div>
 
         <div class="field-group">
-          <label>Interest / Return Rate (%)</label>
+          <label>Interest / Return Rate (%) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="holdings[{{ i }}][interest_rate]"
                  value="{{ h.get('interest_rate', '') }}" min="0" max="30" step="0.01"
                  placeholder="e.g. 7.1 for PPF">
@@ -99,7 +99,7 @@
       <fieldset class="repeating-row">
         <legend>Holding __num__</legend>
         <div class="field-group">
-          <label>Asset Class</label>
+          <label>Asset Class <span class="req">*</span></label>
           <select name="holdings[__idx__][asset_class]" required>
             <option value="">Select…</option>
             <option value="Equity">Equity</option>
@@ -110,7 +110,7 @@
           </select>
         </div>
         <div class="field-group">
-          <label>Instrument / Fund Name</label>
+          <label>Instrument / Fund Name <span class="req">*</span></label>
           <input type="text" name="holdings[__idx__][instrument]" placeholder="e.g. Axis Small Cap Fund" required>
         </div>
         <div class="field-group">
@@ -119,10 +119,12 @@
             <option value="">Select…</option>
             <option value="Sir">Sir</option>
             <option value="Mam">Mam</option>
+            <option value="Father">Father</option>
+            <option value="Mother">Mother</option>
           </select>
         </div>
         <div class="field-group">
-          <label>Monthly SIP (₹)</label>
+          <label>Monthly SIP (₹) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="holdings[__idx__][sip_monthly]" min="0" step="1" placeholder="0">
         </div>
         <div class="field-group">
@@ -134,7 +136,7 @@
           <input type="number" name="holdings[__idx__][current_corpus]" min="0" step="1" placeholder="e.g. 720000">
         </div>
         <div class="field-group">
-          <label>Interest / Return Rate (%)</label>
+          <label>Interest / Return Rate (%) <em style="font-weight:400;font-size:.8em;color:#6b7280;">optional</em></label>
           <input type="number" name="holdings[__idx__][interest_rate]" min="0" max="30" step="0.01" placeholder="e.g. 7.1">
         </div>
         <button type="button" class="remove-row-btn">Remove</button>

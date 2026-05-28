@@ -33,7 +33,7 @@
 
   <form method="post" action="/onboarding/{{ step }}" class="step-form">
     <h2>Risk Profile</h2>
-    <p class="step-hint">Choose the investment approach that best reflects your comfort with market fluctuations. This shapes the asset allocation target in your report.</p>
+    <p class="step-hint">Choose the investment approach that best reflects your comfort with market fluctuations. This shapes the asset allocation target in your report. <span class="req">*</span> Selection required.</p>
 
     {% set saved_risk = draft.get('risk', {}).get('risk_appetite', '') %}
 

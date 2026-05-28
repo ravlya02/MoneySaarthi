@@ -19,7 +19,7 @@ class HouseholdMember(BaseModel):
 
 
 class IncomeSource(BaseModel):
-    earner: Literal["Sir", "Mam"]
+    earner: Literal["Sir", "Mam", "Father", "Mother"]
     source_type: Literal["Salary", "Business", "Rental", "FD Interest", "Other"]
     monthly_amount: Decimal = Field(ge=0)
 
@@ -31,7 +31,7 @@ class Expense(BaseModel):
 
 class Liability(BaseModel):
     loan_type: str
-    owner: Literal["Sir", "Mam", "Joint"] | None = None
+    owner: Literal["Sir", "Mam", "Joint", "Father", "Mother"] | None = None
     emi: Decimal = Field(default=Decimal(0), ge=0)
     pending_amount: Decimal = Field(default=Decimal(0), ge=0)
     interest_rate: Decimal | None = Field(default=None, ge=0, le=30)
@@ -41,7 +41,7 @@ class Liability(BaseModel):
 class Holding(BaseModel):
     asset_class: Literal["Equity", "Debt", "RealEstate", "Metals", "Cash"]
     instrument: str
-    owner: Literal["Sir", "Mam"] | None = None
+    owner: Literal["Sir", "Mam", "Father", "Mother"] | None = None
     sip_monthly: Decimal = Field(default=Decimal(0), ge=0)
     invested_amount: Decimal = Field(default=Decimal(0), ge=0)
     current_corpus: Decimal = Field(default=Decimal(0), ge=0)
@@ -52,7 +52,7 @@ class InsurancePolicy(BaseModel):
     policy_type: Literal["Life", "Health", "Corporate Life", "Corporate Health"]
     product_name: str | None = None
     structure: Literal["Term", "ULIP", "Endowment"] | None = None
-    insured: Literal["Sir", "Mam"] | None = None
+    insured: Literal["Sir", "Mam", "Father", "Mother", "Family", "Family and Parents"] | None = None
     premium: Decimal | None = Field(default=None, ge=0)
     premium_frequency: Literal["Monthly", "Quarterly", "Half-Yearly", "Annually"] | None = None
     policy_end_date: date | None = None
