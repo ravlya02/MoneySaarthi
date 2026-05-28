@@ -24,14 +24,20 @@ create policy "own holdings - update" on public.holdings
 create policy "own holdings - delete" on public.holdings
     for delete using ( auth.uid() = user_id );
 
--- Reports: read-only to the user. No insert/update/delete policy — the worker
--- writes via service_role.
+-- Reports (tax_reports / investment_plans): read-only to the user.
+-- The background worker writes these via service_role (bypasses RLS).
 create policy "own tax_report - select" on public.tax_reports
     for select using ( auth.uid() = user_id );
 create policy "own investment_plan - select" on public.investment_plans
     for select using ( auth.uid() = user_id );
+
+-- Report jobs: the user creates the job row when submitting the form; the
+-- worker (service_role) updates status.  Users can read and create their own
+-- jobs, but cannot update or delete them directly.
 create policy "own report_job - select" on public.report_jobs
     for select using ( auth.uid() = user_id );
+create policy "own report_job - insert" on public.report_jobs
+    for insert with check ( auth.uid() = user_id );
 
 -- Household members: full CRUD for the owner.
 create policy "own household_members - select" on public.household_members
