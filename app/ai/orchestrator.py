@@ -3,12 +3,38 @@ calls Gemini, and validates output. NEVER originates financial numbers."""
 
 from app.ai import gemini, rag, validation, web_search
 from app.ai.prompts import build_prompt
+from app.ai.web_search import MAX_TOOL_CALLS
 from app.models.reports import AINarrative, EngineOutput
 
 
+def _derive_planned_searches(engine: EngineOutput) -> list[dict]:
+    """Map allocation gaps to a shortlist of tool calls, capped at MAX_TOOL_CALLS."""
+    searches: list[dict] = []
+    cur = engine.current_allocation
+    tgt = engine.target_allocation
+
+    if tgt.equity - cur.equity > 5:
+        searches.append({
+            "tool": "search_top_funds",
+            "params": {"category": "LargeCap", "horizon_years": 5},
+        })
+
+    if tgt.debt - cur.debt > 5:
+        searches.append({
+            "tool": "get_fixed_income_rates",
+            "params": {"instrument": "FD"},
+        })
+        searches.append({
+            "tool": "get_fixed_income_rates",
+            "params": {"instrument": "PPF"},
+        })
+
+    return searches[:MAX_TOOL_CALLS]
+
+
 async def enrich_and_synthesize(engine: EngineOutput) -> AINarrative:
-    # 1. Pre-derive searches from engine gaps, gather live market data (bounded).
-    planned: list[dict] = []  # TODO: derive from current-vs-target gaps
+    # 1. Pre-derive searches from engine allocation gaps, gather live market data (bounded).
+    planned = _derive_planned_searches(engine)
     market = await web_search.gather_market_data(planned)
 
     # 2. Retrieve grounding passages (tax filtered by assessment year).
