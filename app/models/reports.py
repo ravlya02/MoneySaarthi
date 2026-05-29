@@ -7,6 +7,16 @@ from typing import Literal
 from pydantic import BaseModel
 
 
+class MarketFact(BaseModel):
+    """A single scraped market data point from the Web-Search Agent (§C.1).
+    Carries provenance so the dashboard can cite source and freshness."""
+
+    label: str      # e.g. "Mirae Asset Large Cap – 5Y CAGR"
+    value: str      # e.g. "18.4%"
+    source_url: str
+    fetched_at: str  # ISO-8601 date, e.g. "2026-05-29"
+
+
 class Allocation(BaseModel):
     equity: Decimal
     debt: Decimal
