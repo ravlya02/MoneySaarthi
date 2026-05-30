@@ -50,6 +50,18 @@ class EngineOutput(BaseModel):
     goal_funding: list[GoalFunding]
 
 
+class Passage(BaseModel):
+    """A single retrieved passage from the Qdrant knowledge base (§C.2).
+    Tax passages carry effective_ay so stale slabs are never served."""
+
+    corpus: str
+    doc_title: str
+    section: str
+    source_url: str
+    effective_ay: str | None = None
+    text: str
+
+
 class ActionItem(BaseModel):
     action: str
     instrument: str | None = None

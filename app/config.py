@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = ""
     gemini_model: str = "gemini-1.5-pro"
-    gemini_embedding_model: str = "text-embedding-004"
+    gemini_embedding_model: str = "gemini-embedding-2"
 
     qdrant_url: str = ""
     qdrant_api_key: str = ""

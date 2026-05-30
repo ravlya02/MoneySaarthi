@@ -6,9 +6,11 @@ pydantic[email]>=2
 pydantic-settings
 supabase
 httpx
-google-generativeai
+google-genai
 qdrant-client
 plotly
 python-jose[cryptography]
 psycopg2-binary>=2.9
 tavily-python>=0.3
+pypdf>=4
+python-docx>=1.1

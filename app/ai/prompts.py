@@ -2,7 +2,7 @@
 and marked immutable; Gemini writes narrative only and must refuse to state any
 number not present there."""
 
-from app.ai.rag import Passage
+from app.models.reports import Passage
 from app.ai.web_search import MarketFact
 from app.models.reports import EngineOutput
 
