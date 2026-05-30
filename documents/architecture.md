@@ -373,7 +373,7 @@ TOOLS = [
 
 **Embedding strategy:**
 - **Chunking:** split source documents *semantically* — by section/clause for tax law (each deduction or slab table as its own chunk), by concept for strategy docs — targeting ~300–500 tokens with ~50-token overlap. Tax law especially must not be chunked mid-clause, or retrieval returns half a rule.
-- **Embedding model:** use Gemini's embedding model (e.g. `text-embedding-004` / `gemini-embedding`) for both indexing and queries so the vector spaces match. Store the model name in collection metadata; if you ever change models you must re-embed the whole corpus.
+- **Embedding model:** use Gemini's embedding model (e.g. `gemini-embedding-2` / `gemini-embedding`) for both indexing and queries so the vector spaces match. Store the model name in collection metadata; if you ever change models you must re-embed the whole corpus.
 - **Hybrid retrieval + rerank:** retrieve top-k (k≈20) by vector similarity with payload filters, then rerank to the top 4–6 passages actually injected into the prompt. This keeps the prompt tight and pushes the most on-point clauses to the top.
 - **Freshness governance:** tax content carries `last_reviewed` and `effective_ay`. A scheduled job (post-Budget, annually) re-indexes the tax corpus. The RAG layer should refuse to surface tax passages whose `effective_ay` doesn't match the report's assessment year.
 

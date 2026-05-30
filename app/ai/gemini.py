@@ -10,5 +10,5 @@ TIMEOUT_S = 30
 async def synthesize(prompt: str) -> AINarrative:
     """Send the assembled prompt, parse the JSON response against AINarrative.
     On malformed output, retry with a stricter instruction. TODO: implement the
-    google-generativeai call + backoff."""
+    google-genai call + backoff."""
     raise NotImplementedError

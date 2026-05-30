@@ -141,7 +141,7 @@ app/
 documents/
   architecture.md        — authoritative reference design (read first)
   tax_document.pdf       — Income Tax Act 2025 reference
-  Investment_analysis_and_portfolio_management.pdf — portfolio domain reference
+  Advisor_Knowledge_Base.docx — portfolio domain reference
 tests/
   test_tax.py            — 2 unit tests: sub-rebate → 0 tax; high income → tax > 0
   test_auth.py           — session cookie, logout, login page render, root redirect
