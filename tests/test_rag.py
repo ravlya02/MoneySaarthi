@@ -48,6 +48,12 @@ def _make_scored_points(n: int, payload: dict) -> list[MagicMock]:
     return [_make_scored_point(payload, score=1.0 - i * 0.01) for i in range(n)]
 
 
+def _make_query_result(points: list[MagicMock]) -> MagicMock:
+    result = MagicMock()
+    result.points = points
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Passage model tests
 # ---------------------------------------------------------------------------
@@ -86,21 +92,18 @@ def test_passage_effective_ay_optional():
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_tax_uses_ay_filter(mock_embed, mock_client):
-    mock_client.return_value.search.return_value = [_make_scored_point(_TAX_PAYLOAD)]
+    mock_client.return_value.query_points.return_value = _make_query_result([_make_scored_point(_TAX_PAYLOAD)])
     retrieve_tax_passages("tax slabs", "AY 2026-27")
-    call_kwargs = mock_client.return_value.search.call_args
-    query_filter = call_kwargs.kwargs.get("query_filter") or call_kwargs.args[2] if len(call_kwargs.args) > 2 else None
-    # query_filter is passed as a keyword argument
+    call_kwargs = mock_client.return_value.query_points.call_args
     assert call_kwargs.kwargs.get("query_filter") is not None
 
 
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_tax_filter_contains_ay(mock_embed, mock_client):
-    mock_client.return_value.search.return_value = [_make_scored_point(_TAX_PAYLOAD)]
+    mock_client.return_value.query_points.return_value = _make_query_result([_make_scored_point(_TAX_PAYLOAD)])
     retrieve_tax_passages("tax slabs", "AY 2026-27")
-    kwargs = mock_client.return_value.search.call_args.kwargs
-    # The filter's must conditions should reference effective_ay = AY 2026-27
+    kwargs = mock_client.return_value.query_points.call_args.kwargs
     filt = kwargs["query_filter"]
     condition = filt.must[0]
     assert condition.key == "effective_ay"
@@ -110,7 +113,7 @@ def test_retrieve_tax_filter_contains_ay(mock_embed, mock_client):
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_tax_reranks_to_rerank_to(mock_embed, mock_client):
-    mock_client.return_value.search.return_value = _make_scored_points(20, _TAX_PAYLOAD)
+    mock_client.return_value.query_points.return_value = _make_query_result(_make_scored_points(20, _TAX_PAYLOAD))
     result = retrieve_tax_passages("slabs", "AY 2026-27")
     assert len(result) <= RERANK_TO
 
@@ -118,7 +121,7 @@ def test_retrieve_tax_reranks_to_rerank_to(mock_embed, mock_client):
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_tax_returns_passage_objects(mock_embed, mock_client):
-    mock_client.return_value.search.return_value = [_make_scored_point(_TAX_PAYLOAD)]
+    mock_client.return_value.query_points.return_value = _make_query_result([_make_scored_point(_TAX_PAYLOAD)])
     result = retrieve_tax_passages("slabs", "AY 2026-27")
     assert all(isinstance(p, Passage) for p in result)
     assert result[0].corpus == TAX_CORPUS
@@ -127,7 +130,7 @@ def test_retrieve_tax_returns_passage_objects(mock_embed, mock_client):
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_tax_empty_on_exception(mock_embed, mock_client):
-    mock_client.return_value.search.side_effect = Exception("connection refused")
+    mock_client.return_value.query_points.side_effect = Exception("connection refused")
     result = retrieve_tax_passages("slabs", "AY 2026-27")
     assert result == []
 
@@ -139,25 +142,25 @@ def test_retrieve_tax_empty_on_exception(mock_embed, mock_client):
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_strategy_no_ay_filter(mock_embed, mock_client):
-    mock_client.return_value.search.return_value = [_make_scored_point(_STRATEGY_PAYLOAD)]
+    mock_client.return_value.query_points.return_value = _make_query_result([_make_scored_point(_STRATEGY_PAYLOAD)])
     retrieve_strategy_passages("asset allocation")
-    kwargs = mock_client.return_value.search.call_args.kwargs
+    kwargs = mock_client.return_value.query_points.call_args.kwargs
     assert kwargs.get("query_filter") is None
 
 
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_strategy_targets_correct_collection(mock_embed, mock_client):
-    mock_client.return_value.search.return_value = [_make_scored_point(_STRATEGY_PAYLOAD)]
+    mock_client.return_value.query_points.return_value = _make_query_result([_make_scored_point(_STRATEGY_PAYLOAD)])
     retrieve_strategy_passages("rebalancing")
-    kwargs = mock_client.return_value.search.call_args.kwargs
+    kwargs = mock_client.return_value.query_points.call_args.kwargs
     assert kwargs["collection_name"] == STRATEGY_CORPUS
 
 
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_strategy_reranks_to_rerank_to(mock_embed, mock_client):
-    mock_client.return_value.search.return_value = _make_scored_points(20, _STRATEGY_PAYLOAD)
+    mock_client.return_value.query_points.return_value = _make_query_result(_make_scored_points(20, _STRATEGY_PAYLOAD))
     result = retrieve_strategy_passages("allocation")
     assert len(result) <= RERANK_TO
 
@@ -165,7 +168,7 @@ def test_retrieve_strategy_reranks_to_rerank_to(mock_embed, mock_client):
 @patch("app.ai.rag._qdrant_client")
 @patch("app.ai.rag.embed", return_value=_FAKE_VECTOR)
 def test_retrieve_strategy_empty_on_exception(mock_embed, mock_client):
-    mock_client.return_value.search.side_effect = Exception("timeout")
+    mock_client.return_value.query_points.side_effect = Exception("timeout")
     result = retrieve_strategy_passages("allocation")
     assert result == []
 
@@ -251,3 +254,14 @@ def test_ensure_collections_creates_if_missing():
     mock_client.get_collection.side_effect = Exception("not found")
     ensure_collections(mock_client)
     assert mock_client.create_collection.call_count == 2  # one per corpus
+
+
+def test_ensure_collections_creates_effective_ay_index():
+    """ensure_collections must always create a keyword index on effective_ay in tax_law_kb."""
+    mock_client = MagicMock()
+    mock_client.get_collection.return_value = MagicMock()
+    ensure_collections(mock_client)
+    mock_client.create_payload_index.assert_called_once()
+    call_kwargs = mock_client.create_payload_index.call_args.kwargs
+    assert call_kwargs["collection_name"] == TAX_CORPUS
+    assert call_kwargs["field_name"] == "effective_ay"

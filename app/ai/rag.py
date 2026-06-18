@@ -50,15 +50,15 @@ def retrieve_tax_passages(query: str, effective_ay: str) -> list[Passage]:
     try:
         vector = embed(query)
         client = _qdrant_client()
-        hits = client.search(
+        result = client.query_points(
             collection_name=TAX_CORPUS,
-            query_vector=vector,
+            query=vector,
             limit=RETRIEVE_K,
             query_filter=Filter(
                 must=[FieldCondition(key="effective_ay", match=MatchValue(value=effective_ay))]
             ),
         )
-        hits.sort(key=lambda h: h.score, reverse=True)
+        hits = sorted(result.points, key=lambda h: h.score, reverse=True)
         return [
             Passage(
                 corpus=TAX_CORPUS,
@@ -81,12 +81,12 @@ def retrieve_strategy_passages(query: str) -> list[Passage]:
     try:
         vector = embed(query)
         client = _qdrant_client()
-        hits = client.search(
+        result = client.query_points(
             collection_name=STRATEGY_CORPUS,
-            query_vector=vector,
+            query=vector,
             limit=RETRIEVE_K,
         )
-        hits.sort(key=lambda h: h.score, reverse=True)
+        hits = sorted(result.points, key=lambda h: h.score, reverse=True)
         return [
             Passage(
                 corpus=STRATEGY_CORPUS,

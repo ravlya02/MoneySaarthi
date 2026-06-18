@@ -22,13 +22,6 @@ section references below (§A–§E) point into it.
 - **Use `Decimal` for all money math, never float.** (§E.2)
 - **After Gemini responds, run a numeric-consistency check:** scan the narrative for rupee figures and
   assert they match the engine's verified facts; reject/strip any number Gemini introduced. (§E.2)
-- **RLS is enabled on every table.** A user can only touch rows where `user_id = auth.uid()`. Always
-  derive `user_id` from the verified Supabase JWT, never from the request body; use `with check` on
-  writes. (§B.3)
-- **Two keys, two trust levels.** Browser/Jinja layer uses only the **anon key** (RLS enforced). The
-  background worker uses the **`service_role` key** (bypasses RLS) and is the only writer of
-  `tax_reports` / `investment_plans`. The `service_role` key stays in server-side env vars only —
-  never in a template or client bundle. (§B.3)
 
 ## Architecture at a glance (§A)
 Report generation is **asynchronous**, tracked via the `report_jobs` table. Three phases:

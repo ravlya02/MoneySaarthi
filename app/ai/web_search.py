@@ -2,6 +2,7 @@
 limits. Results are scraped to structured facts before reaching Gemini."""
 
 import asyncio
+import json
 import logging
 import re
 import time
@@ -75,7 +76,7 @@ def _cache_get(tool: str, params: dict) -> list[MarketFact] | None:
             db.table("market_data_cache")
             .select("result")
             .eq("tool", tool)
-            .eq("params", params)
+            .eq("params", json.dumps(params, sort_keys=True))
             .eq("cache_date", date.today().isoformat())
             .limit(1)
             .execute()
@@ -94,7 +95,7 @@ def _cache_set(tool: str, params: dict, facts: list[MarketFact], source_urls: li
         db.table("market_data_cache").upsert(
             {
                 "tool": tool,
-                "params": params,
+                "params": json.dumps(params, sort_keys=True),
                 "cache_date": date.today().isoformat(),
                 "result": [f.model_dump() for f in facts],
                 "source_urls": source_urls,

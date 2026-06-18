@@ -16,7 +16,7 @@ from pathlib import Path
 import docx
 import pypdf
 from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, PointStruct, VectorParams
+from qdrant_client.http.models import Distance, PayloadSchemaType, PointStruct, VectorParams
 
 from app.ai.rag import EMBED_MODEL, STRATEGY_CORPUS, TAX_CORPUS, embed
 from app.config import get_settings
@@ -36,7 +36,9 @@ def _qdrant_client() -> QdrantClient:
 
 
 def ensure_collections(client: QdrantClient) -> None:
-    """Create tax_law_kb and portfolio_strategy_kb if they do not exist."""
+    """Create tax_law_kb and portfolio_strategy_kb if they do not exist.
+    Also ensures a keyword payload index on effective_ay in tax_law_kb so
+    filtered queries are accepted by Qdrant Cloud."""
     for name in (TAX_CORPUS, STRATEGY_CORPUS):
         try:
             client.get_collection(name)
@@ -46,6 +48,12 @@ def ensure_collections(client: QdrantClient) -> None:
                 vectors_config=VectorParams(size=3072, distance=Distance.COSINE),
                 on_disk_payload=True,
             )
+    # Idempotent — Qdrant ignores the call if the index already exists.
+    client.create_payload_index(
+        collection_name=TAX_CORPUS,
+        field_name="effective_ay",
+        field_schema=PayloadSchemaType.KEYWORD,
+    )
 
 
 def extract_pages(pdf_path: Path) -> list[str]:
